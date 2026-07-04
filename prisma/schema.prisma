@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== Enums =====
+
+enum UserRole {
+  GUEST
+  HOTELIER
+  ADMIN
+}
+
+enum HotelStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum RoomStatus {
+  AVAILABLE
+  BLOCKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  AVAILABLE
+  PAID
+}
+
+// ===== Entities =====
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(GUEST)
+  phoneNumber  String?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bookings Booking[]
+  reviews  Review[]
+  hotels  Hotel[]
+  payouts Payout[]
+}
+
+model Hotel {
+  id                     String       @id @default(cuid())
+  hotelierId             String
+  nameAr                 String
+  nameEn                 String
+  descriptionAr          String
+  descriptionEn          String
+  city                   String
+  address                String
+  latitude               Float?
+  longitude              Float?
+  starRating             Int
+  amenities              String[]
+  photos                 String[]
+  status                 HotelStatus  @default(PENDING)
+  cancellationPolicyHours Int         @default(48)
+  checkInTime            String       @default("15:00")
+  checkOutTime           String       @default("12:00")
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  hotelier  User       @relation(fields: [hotelierId], references: [id])
+  roomTypes RoomType[]
+  rooms     Room[]
+  bookings  Booking[]
+  reviews   Review[]
+
+  @@index([city])
+  @@index([status])
+}
+
+model RoomType {
+  id           String   @id @default(cuid())
+  hotelId      String
+  nameAr       String
+  nameEn       String
+  descriptionAr String?
+  descriptionEn String?
+  capacity     Int
+  bedType      String
+  basePrice    Decimal  @db.Decimal(10, 2)
+  amenities    String[]
+  photos       String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hotel         Hotel            @relation(fields: [hotelId], references: [id])
+  rooms         Room[]
+  rates         Rate[]
+  bookingItems  BookingLineItem[]
+
+  @@index([hotelId])
+}
+
+model Rate {
+  id           String   @id @default(cuid())
+  roomTypeId    String
+  startDate     DateTime @db.Date
+  endDate       DateTime @db.Date
+  nightlyPrice  Decimal  @db.Decimal(10, 2)
+  label         String?
+  createdAt     DateTime @default(now())
+
+  roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@index([roomTypeId])
+}
+
+model Room {
+  id           String      @id @default(cuid())
+  roomTypeId   String
+  hotelId      String
+  roomNumber   String
+  floor        Int?
+  status       RoomStatus  @default(AVAILABLE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  roomType     RoomType         @relation(fields: [roomTypeId], references: [id])
+  hotel        Hotel            @relation(fields: [hotelId], references: [id])
+  reservations RoomReservation[]
+
+  @@unique([hotelId, roomNumber])
+  @@index([roomTypeId])
+  @@index([hotelId])
+}
+
+model Booking {
+  id             String         @id @default(cuid())
+  guestId        String
+  hotelId        String
+  checkIn        DateTime       @db.Date
+  checkOut       DateTime       @db.Date
+  guestCount     Int
+  status         BookingStatus  @default(PENDING)
+  totalPrice     Decimal        @db.Decimal(10, 2)
+  idempotencyKey String?        @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  guest     User               @relation(fields: [guestId], references: [id])
+  hotel     Hotel               @relation(fields: [hotelId], references: [id])
+  lineItems BookingLineItem[]
+  payment   Payment?
+  review    Review?
+  payouts  Payout[]
+
+  @@index([guestId])
+  @@index([hotelId])
+  @@index([status])
+}
+
+model BookingLineItem {
+  id                   String   @id @default(cuid())
+  bookingId            String
+  roomTypeId           String
+  quantity             Int
+  unitPricePerNight    Decimal  @db.Decimal(10, 2)
+  lineTotal            Decimal  @db.Decimal(10, 2)
+  createdAt            DateTime @default(now())
+
+  booking       Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  roomType      RoomType          @relation(fields: [roomTypeId], references: [id])
+  reservations RoomReservation[]
+
+  @@index([bookingId])
+  @@index([roomTypeId])
+}
+
+model RoomReservation {
+  id               String   @id @default(cuid())
+  bookingLineItemId String
+  roomId           String
+  checkIn          DateTime @db.Date
+  checkOut         DateTime @db.Date
+  createdAt        DateTime @default(now())
+
+  bookingLineItem BookingLineItem @relation(fields: [bookingLineItemId], references: [id], onDelete: Cascade)
+  room            Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([bookingLineItemId])
+}
+
+model Payment {
+  id                 String         @id @default(cuid())
+  bookingId          String         @unique
+  amount             Decimal        @db.Decimal(10, 2)
+  currency           String         @default("SAR")
+  providerPaymentRef String?        @unique
+  status             PaymentStatus  @default(PENDING)
+  failureReason      String?
+  capturedAt         DateTime?
+  refundedAt        DateTime?
+  refundAmount       Decimal?       @db.Decimal(10, 2)
+  createdAt          DateTime       @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Payout {
+  id          String        @id @default(cuid())
+  hotelierId  String
+  bookingId   String
+  amount      Decimal       @db.Decimal(10, 2)
+  status      PayoutStatus  @default(PENDING)
+  payoutCycle String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  hotelier User    @relation(fields: [hotelierId], references: [id])
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([hotelierId])
+  @@index([status])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  guestId    String
+  hotelId    String
+  rating     Int
+  commentAr  String?
+  commentEn  String?
+  createdAt  DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  guest   User    @relation(fields: [guestId], references: [id])
+  hotel   Hotel   @relation(fields: [hotelId], references: [id])
+
+  @@index([hotelId])
+}

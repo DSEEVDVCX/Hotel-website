@@ -1,0 +1,431 @@
+@import "tailwindcss";
+
+@theme {
+  /* ===== Suwar Al Dhahab — Elegant Luxury Editorial ===== */
+  /* Warm ivory substrate */
+  --color-paper: #f6f2ea;
+  --color-paper-soft: #efe7d8;
+  --color-cream: #fbf9f4;
+
+  /* Warm charcoal ink for type */
+  --color-ink: #211c15;
+  --color-ink-soft: #5a5044;
+  --color-muted: #9a8f7e;
+
+  /* Refined gold — the sole accent (justified: a gold-markets brand) */
+  --color-gold: #b08d4f;
+  --color-gold-deep: #846431;
+  --color-gold-soft: #d9be83;
+  --color-gold-glint: #efe2c0;
+
+  /* Warm soft dividers */
+  --color-line: #e4dcc9;
+  --color-line-bright: #d4c9af;
+
+  /* Dramatic dark surface for the immersive hero only */
+  --color-noir: #17130d;
+  --color-noir-soft: #221c13;
+
+  --font-ar: "Tajawal", sans-serif;
+  --font-en: "Inter", sans-serif;
+  --font-display-en: "Playfair Display", serif;
+}
+
+:root {
+  --font-active: var(--font-ar);
+  --font-display-active: var(--font-ar);
+}
+
+html[lang="en"] {
+  --font-active: var(--font-en);
+  --font-display-active: var(--font-display-en);
+}
+
+/* ===== Dark theme — warm charcoal, never pure black ===== */
+/* Refined gold reads slightly brighter on dark for contrast parity. */
+[data-theme="dark"] {
+  --color-paper: #18130d;
+  --color-paper-soft: #1f1912;
+  --color-cream: #16110b;
+  --color-ink: #ebe3d3;
+  --color-ink-soft: #b3a892;
+  --color-muted: #807665;
+  --color-gold: #c9a55c;
+  --color-gold-deep: #9a7b3e;
+  --color-gold-soft: #dcc079;
+  --color-gold-glint: #f0e2bf;
+  --color-line: #2b2519;
+  --color-line-bright: #3a3222;
+  --color-noir: #100c08;
+  --color-noir-soft: #18130d;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-active);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-paper);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-paper);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-bright);
+  border-radius: 999px;
+  border: 3px solid var(--color-paper);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+/* ===== Typography ===== */
+.font-display {
+  font-family: var(--font-display-active);
+}
+
+html[lang="en"] .font-display {
+  letter-spacing: -0.015em;
+  line-height: 1.04;
+}
+
+/* Fluid display heading */
+.display {
+  font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+.eyebrow {
+  font-family: var(--font-active);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-gold-deep);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 1px;
+  background: var(--color-gold);
+  opacity: 0.7;
+}
+html[dir="rtl"] .eyebrow::before {
+  display: none;
+}
+html[dir="rtl"] .eyebrow::after {
+  content: "";
+  width: 1.75rem;
+  height: 1px;
+  background: var(--color-gold);
+  opacity: 0.7;
+}
+
+/* On dark surfaces, the eyebrow reads light */
+.on-dark .eyebrow {
+  color: var(--color-gold-soft);
+}
+.on-dark .eyebrow::before,
+.on-dark .eyebrow::after {
+  background: var(--color-gold-soft);
+}
+
+.section-pad {
+  padding-block: clamp(4.5rem, 9vw, 8rem);
+}
+
+/* ===== Components ===== */
+
+/* Primary gold button — refined, pill */
+.btn-gold {
+  background: var(--color-gold);
+  color: var(--color-paper);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+  box-shadow: 0 10px 30px -12px rgba(132, 100, 49, 0.55);
+}
+.btn-gold:hover {
+  background: var(--color-gold-deep);
+  box-shadow: 0 14px 36px -12px rgba(132, 100, 49, 0.7);
+}
+.btn-gold:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Outline / ghost button */
+.btn-outline {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-line-bright);
+  font-weight: 500;
+  border-radius: 999px;
+  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
+}
+.btn-outline:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold-deep);
+}
+
+/* On dark surfaces */
+.on-dark .btn-outline {
+  color: var(--color-cream);
+  border-color: rgba(217, 190, 131, 0.4);
+}
+.on-dark .btn-outline:hover {
+  border-color: var(--color-gold-soft);
+  color: var(--color-gold-soft);
+  background: rgba(217, 190, 131, 0.08);
+}
+
+/* Card surface */
+.card {
+  background: var(--color-cream);
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+/* Soft tinted shadow */
+.shadow-soft {
+  box-shadow: 0 24px 60px -36px rgba(33, 28, 21, 0.28);
+}
+.shadow-lift {
+  box-shadow: 0 40px 80px -40px rgba(132, 100, 49, 0.32);
+}
+
+/* Underline link */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: -3px;
+  width: 0;
+  height: 1.5px;
+  background: var(--color-gold);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Elegant image treatment (warm, soft — replaces the harsh duotone) */
+.img-elegant {
+  filter: saturate(0.95) contrast(1.04) brightness(1.01);
+}
+.img-warm {
+  filter: saturate(0.9) contrast(1.06) sepia(0.06) brightness(0.98);
+}
+
+/* Hairline divider */
+.rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-line-bright), transparent);
+}
+
+/* Subtle paper grain — ultra-fine, fixed, non-interactive */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+[data-theme="dark"] .grain {
+  opacity: 0.06;
+  mix-blend-mode: screen;
+}
+
+/* ===== Intro cinematic overlay ===== */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: radial-gradient(ellipse at 50% 48%, #221c13 0%, #17130d 55%, #0d0a07 100%);
+  overflow: hidden;
+}
+
+/* Breathing gold aura */
+.intro-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 47%,
+    rgba(239, 226, 192, 0.55) 0%,
+    rgba(217, 190, 131, 0.28) 22%,
+    rgba(176, 141, 79, 0.1) 46%,
+    transparent 72%
+  );
+  animation: intro-breathe 6s ease-in-out infinite;
+}
+@keyframes intro-breathe {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+/* Thin gold rule that draws across the wordmark */
+.intro-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-gold-soft), transparent);
+}
+
+/* Soft floating particle */
+.intro-particle {
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(239, 226, 192, 0.9), rgba(217, 190, 131, 0));
+  pointer-events: none;
+  animation: intro-float linear infinite;
+}
+@keyframes intro-float {
+  0% { transform: translateY(20px) translateX(0); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-120px) translateX(12px); opacity: 0; }
+}
+
+/* ===== High-end visual system ===== */
+
+/* Signature luxury easing token */
+:root {
+  --ease-lux: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Gold-luster shimmer (the signature: real gold's reflective surface) --- */
+/* Applied to a span/element with text; animates a warm gold gradient across glyphs. */
+.gold-luster {
+  background: linear-gradient(
+    100deg,
+    var(--color-gold-deep) 0%,
+    var(--color-gold) 28%,
+    var(--color-gold-glint) 48%,
+    #fff6df 52%,
+    var(--color-gold-glint) 56%,
+    var(--color-gold) 74%,
+    var(--color-gold-deep) 100%
+  );
+  background-size: 250% 100%;
+  background-position: 0% 0%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: luster-shift 7s var(--ease-lux) infinite;
+}
+@keyframes luster-shift {
+  0% { background-position: 0% 0%; }
+  55% { background-position: 100% 0%; }
+  100% { background-position: 0% 0%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gold-luster {
+    animation: none;
+    background: linear-gradient(100deg, var(--color-gold-deep), var(--color-gold-glint), var(--color-gold-deep));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+}
+
+/* --- Double-bezel (nested hardware architecture) --- */
+/* Outer shell: subtle tinted tray + hairline ring + padding + large radius */
+.bezel {
+  background: var(--color-paper-soft);
+  border: 1px solid var(--color-line);
+  border-radius: 1.5rem;
+  padding: 0.5rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 30px 60px -44px rgba(33, 28, 21, 0.4);
+  transition: transform 0.5s var(--ease-lux), box-shadow 0.5s var(--ease-lux);
+}
+[data-theme="dark"] .bezel {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 30px 60px -44px rgba(0, 0, 0, 0.6);
+}
+/* Inner core: sits inside the shell, concentric smaller radius */
+.bezel-core {
+  border-radius: calc(1.5rem - 0.5rem);
+  overflow: hidden;
+}
+.bezel:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 44px 80px -44px rgba(132, 100, 49, 0.4);
+}
+
+/* --- Button-in-button trailing icon --- */
+/* The arrow sits in its own circular well, nested flush in the CTA. */
+.btn-gold .btn-well {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: transform 0.4s var(--ease-lux), background 0.3s ease;
+}
+.btn-gold:hover .btn-well {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(2px) scale(1.06);
+}
+html[dir="rtl"] .btn-gold:hover .btn-well {
+  transform: translateX(-2px) scale(1.06);
+}
+
+/* --- 3D tilt wrapper --- */
+.tilt {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition: transform 0.5s var(--ease-lux);
+}
+.tilt-inner {
+  transition: transform 0.5s var(--ease-lux);
+  transform-style: preserve-3d;
+}
+
+/* --- Blur-up scroll entry (applied via Motion variants; CSS fallback for reduced motion) --- */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
