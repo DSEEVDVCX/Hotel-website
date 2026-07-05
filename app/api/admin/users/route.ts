@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requirePlatformAdmin } from "@/lib/session";
+import { parseEnumParam } from "@/lib/validation";
+import { UserRole } from "@prisma/client";
+
+const userRoles = Object.values(UserRole);
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || (session.user as { role: string }).role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requirePlatformAdmin();
+  if (session instanceof NextResponse) return session;
 
-  const role = req.nextUrl.searchParams.get("role");
+  const role = parseEnumParam(req.nextUrl.searchParams.get("role"), userRoles);
+  if (role === null) {
+    return NextResponse.json({ error: "Invalid user role" }, { status: 422 });
+  }
   const users = await prisma.user.findMany({
-    where: role ? { role: role as never } : {},
+    where: role ? { role } : {},
     select: { id: true, email: true, name: true, role: true, status: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });

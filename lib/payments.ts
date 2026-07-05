@@ -11,13 +11,34 @@ export async function createPaymentIntent(amount: number, currency: string = "sa
     amount: Math.round(amount * 100),
     currency,
     automatic_payment_methods: { enabled: true },
+    capture_method: "manual",
   });
 }
 
 export async function capturePayment(
   paymentIntentId: string,
-  idempotencyKey: string
+  idempotencyKey: string,
+  expectedAmount: number,
+  currency: string = "sar"
 ): Promise<Stripe.PaymentIntent> {
+  if (!paymentIntentId.startsWith("pi_")) {
+    throw new Error("Invalid payment intent id");
+  }
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  const expectedMinorAmount = Math.round(expectedAmount * 100);
+  if (paymentIntent.amount !== expectedMinorAmount || paymentIntent.currency !== currency.toLowerCase()) {
+    throw new Error("Payment amount does not match booking total");
+  }
+
+  if (paymentIntent.status === "succeeded") {
+    return paymentIntent;
+  }
+
+  if (paymentIntent.status !== "requires_capture") {
+    throw new Error(`Payment intent is not ready to capture (${paymentIntent.status})`);
+  }
+
   return stripe.paymentIntents.capture(paymentIntentId, {
     idempotencyKey: `capture_${idempotencyKey}`,
   } as Stripe.PaymentIntentCaptureParams);

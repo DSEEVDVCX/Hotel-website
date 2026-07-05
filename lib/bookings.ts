@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { calculateStayPricing } from "@/lib/pricing";
 import { capturePayment } from "@/lib/payments";
 
+const blockingBookingStatuses = ["PENDING", "CONFIRMED", "CHECKED_IN"] as const;
+
 export async function createBooking(
   data: {
     guestId: string;
@@ -12,7 +14,7 @@ export async function createBooking(
     guestCount: number;
     idempotencyKey: string;
     lineItems: Array<{ roomTypeId: string; quantity: number }>;
-    paymentMethodId: string;
+    paymentIntentId: string;
   }
 ) {
   const existing = await prisma.booking.findUnique({
@@ -30,6 +32,7 @@ export async function createBooking(
       });
 
       let totalPrice = 0;
+      let totalCapacity = 0;
       const lineItemData: Array<{
         roomTypeId: string;
         quantity: number;
@@ -39,8 +42,8 @@ export async function createBooking(
       }> = [];
 
       for (const item of data.lineItems) {
-        const roomType = await tx.roomType.findUniqueOrThrow({
-          where: { id: item.roomTypeId },
+        const roomType = await tx.roomType.findFirstOrThrow({
+          where: { id: item.roomTypeId, hotelId: data.hotelId },
           include: {
             rates: {
               where: {
@@ -51,11 +54,13 @@ export async function createBooking(
             rooms: {
               where: {
                 status: "AVAILABLE",
+                hotelId: data.hotelId,
                 reservations: {
                   none: {
                     AND: [
                       { checkIn: { lt: data.checkOut } },
                       { checkOut: { gt: data.checkIn } },
+                      { bookingLineItem: { booking: { status: { in: [...blockingBookingStatuses] } } } },
                     ],
                   },
                 },
@@ -70,6 +75,7 @@ export async function createBooking(
 
         const pricing = calculateStayPricing(roomType, data.checkIn, data.checkOut, item.quantity);
         totalPrice += pricing.totalForBooking;
+        totalCapacity += roomType.capacity * item.quantity;
 
         const selectedRooms = roomType.rooms.slice(0, item.quantity);
 
@@ -80,6 +86,10 @@ export async function createBooking(
           lineTotal: pricing.totalPerRoom * item.quantity,
           reservations: selectedRooms.map((r) => ({ roomId: r.id })),
         });
+      }
+
+      if (data.guestCount > totalCapacity) {
+        throw new Error("Guest count exceeds selected room capacity");
       }
 
       const booking = await tx.booking.create({
@@ -127,7 +137,7 @@ export async function createBooking(
     });
 
     try {
-      const paymentResult = await capturePayment(data.paymentMethodId, data.idempotencyKey);
+      const paymentResult = await capturePayment(data.paymentIntentId, data.idempotencyKey, Number(result.totalPrice));
 
       const updated = await prisma.$transaction(async (tx) => {
         const updatedBooking = await tx.booking.update({
@@ -150,16 +160,21 @@ export async function createBooking(
 
       return { booking: updated, created: true };
     } catch (paymentError) {
-      await prisma.booking.update({
-        where: { id: result.id },
-        data: { status: "FAILED" },
-      });
-      await prisma.payment.update({
-        where: { bookingId: result.id },
-        data: {
-          status: "FAILED",
-          failureReason: paymentError instanceof Error ? paymentError.message : "Payment failed",
-        },
+      await prisma.$transaction(async (tx) => {
+        await tx.roomReservation.deleteMany({
+          where: { bookingLineItem: { bookingId: result.id } },
+        });
+        await tx.booking.update({
+          where: { id: result.id },
+          data: { status: "FAILED" },
+        });
+        await tx.payment.update({
+          where: { bookingId: result.id },
+          data: {
+            status: "FAILED",
+            failureReason: paymentError instanceof Error ? paymentError.message : "Payment failed",
+          },
+        });
       });
       throw new Error("Payment capture failed");
     }

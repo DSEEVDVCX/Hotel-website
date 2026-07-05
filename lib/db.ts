@@ -4,6 +4,11 @@ let _prisma: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
   if (_prisma) return _prisma;
+  const globalPrisma = (globalThis as Record<string, unknown>).__prisma as PrismaClient | undefined;
+  if (process.env.NODE_ENV !== "production" && globalPrisma) {
+    _prisma = globalPrisma;
+    return _prisma;
+  }
   const { Pool } = require("pg");
   const { PrismaPg } = require("@prisma/adapter-pg");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });

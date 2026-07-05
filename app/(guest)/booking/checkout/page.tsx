@@ -2,10 +2,28 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
 import { Calendar, Users, ArrowRight, Check, ArrowLeft } from "@phosphor-icons/react";
 import Link from "next/link";
+
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+function StripePaymentFields({ onReady }: { onReady: (stripe: Stripe | null, elements: StripeElements | null) => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  useEffect(() => {
+    onReady(stripe, elements);
+  }, [stripe, elements, onReady]);
+
+  return <PaymentElement />;
+}
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -18,15 +36,19 @@ function CheckoutContent() {
   const [room, setRoom] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [guests, setGuests] = useState("1");
+  const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") || "");
+  const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") || "");
+  const [guests, setGuests] = useState(searchParams.get("guests") || "1");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<any>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState("");
+  const [paymentClientSecret, setPaymentClientSecret] = useState("");
+  const [stripe, setStripe] = useState<Stripe | null>(null);
+  const [stripeElements, setStripeElements] = useState<StripeElements | null>(null);
 
   useEffect(() => {
     if (!roomTypeId) return;
@@ -38,6 +60,13 @@ function CheckoutContent() {
       .then((data) => { setRoom(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, [roomTypeId]);
+
+  useEffect(() => {
+    setPaymentIntentId("");
+    setPaymentClientSecret("");
+    setStripe(null);
+    setStripeElements(null);
+  }, [hotelId, roomTypeId, checkIn, checkOut, guests]);
 
   const nights = (() => {
     if (!checkIn || !checkOut) return 0;
@@ -53,12 +82,69 @@ function CheckoutContent() {
   const roomName = room ? (locale === "ar" ? room.nameAr : room.nameEn) : "";
   const hotelName = room ? (locale === "ar" ? room.hotelNameAr : room.hotelNameEn) : "";
 
+  const preparePaymentIntent = async () => {
+    if (!stripePromise) {
+      throw new Error(locale === "ar" ? "مفتاح Stripe العام غير مضبوط" : "Stripe publishable key is not configured");
+    }
+
+    const intentRes = await fetch("/api/payments/intents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hotelId,
+        checkIn,
+        checkOut,
+        guestCount: parseInt(guests),
+        lineItems: [{ roomTypeId, quantity: 1 }],
+      }),
+    });
+    const intentData = await intentRes.json();
+    if (!intentRes.ok) {
+      throw new Error(intentData.error || (locale === "ar" ? "فشل تجهيز الدفع" : "Payment setup failed"));
+    }
+
+    setPaymentIntentId(intentData.paymentIntentId);
+    setPaymentClientSecret(intentData.clientSecret || "");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
 
     try {
+      if (!paymentClientSecret) {
+        await preparePaymentIntent();
+        setSubmitting(false);
+        return;
+      }
+
+      if (!stripe || !stripeElements) {
+        setError(locale === "ar" ? "بوابة الدفع لم تجهز بعد" : "Payment form is not ready yet");
+        setSubmitting(false);
+        return;
+      }
+
+      const paymentResult = await stripe.confirmPayment({
+        elements: stripeElements,
+        redirect: "if_required",
+        confirmParams: { return_url: window.location.href },
+      });
+
+      if (paymentResult.error) {
+        setError(paymentResult.error.message || (locale === "ar" ? "فشل تأكيد الدفع" : "Payment confirmation failed"));
+        setSubmitting(false);
+        return;
+      }
+
+      const confirmedIntentId = paymentResult.paymentIntent?.id || paymentIntentId;
+      const status = paymentResult.paymentIntent?.status;
+      if (!confirmedIntentId || (status !== "requires_capture" && status !== "succeeded")) {
+        setError(locale === "ar" ? "لم يتم تأكيد الدفع" : "Payment was not confirmed");
+        setSubmitting(false);
+        return;
+      }
+
       const idempotencyKey = crypto.randomUUID();
       const res = await fetch("/api/bookings", {
         method: "POST",
@@ -71,7 +157,7 @@ function CheckoutContent() {
           idempotencyKey,
           lineItems: [{ roomTypeId, quantity: 1 }],
           guestDetails: { name, email, phoneNumber: phone },
-          paymentMethodId: "stripe_test_pi",
+          paymentIntentId: confirmedIntentId,
         }),
       });
 
@@ -194,8 +280,21 @@ function CheckoutContent() {
               </div>
             )}
 
-            <button type="submit" disabled={submitting || nights === 0} className="btn btn-primary w-full">
-              {submitting ? (locale === "ar" ? "جاري التأكيد..." : "Confirming...") : t.booking.confirmBooking}
+            {paymentClientSecret && (
+              <div className="rounded-2xl border border-border bg-surface-raised p-6 shadow-sm">
+                <h2 className="mb-4 font-display text-lg font-bold text-on-surface">{t.booking.payment}</h2>
+                <Elements stripe={stripePromise} options={{ clientSecret: paymentClientSecret, locale: locale === "ar" ? "ar" : "en" }}>
+                  <StripePaymentFields onReady={(nextStripe, nextElements) => { setStripe(nextStripe); setStripeElements(nextElements); }} />
+                </Elements>
+              </div>
+            )}
+
+            <button type="submit" disabled={submitting || nights === 0 || (Boolean(paymentClientSecret) && (!stripe || !stripeElements))} className="btn btn-primary w-full">
+              {submitting
+                ? (locale === "ar" ? "جاري التأكيد..." : "Confirming...")
+                : paymentClientSecret
+                  ? t.booking.confirmBooking
+                  : (locale === "ar" ? "المتابعة للدفع" : "Continue to payment")}
               <ArrowRight size={16} weight="bold" className="rtl:rotate-180" aria-hidden />
             </button>
           </form>
@@ -206,7 +305,7 @@ function CheckoutContent() {
               <h2 className="mb-4 font-display text-lg font-bold text-on-surface">{t.booking.orderSummary}</h2>
 
               <div className="mb-4 flex gap-3">
-                <img src={room.photos?.[0] || `https://picsum.photos/seed/sewar-checkout-${roomTypeId.slice(-4)}/200/150`} alt={roomName} className="h-20 w-28 shrink-0 rounded-xl object-cover img-elegant" loading="lazy" />
+                <Image src={room.photos?.[0] || `https://picsum.photos/seed/sewar-checkout-${roomTypeId.slice(-4)}/200/150`} alt={roomName} width={112} height={80} unoptimized className="h-20 w-28 shrink-0 rounded-xl object-cover img-elegant" />
                 <div>
                   <p className="font-display text-sm font-bold text-on-surface">{roomName}</p>
                   <p className="text-xs text-on-surface-muted">{hotelName}</p>

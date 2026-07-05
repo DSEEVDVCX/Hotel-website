@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Star, MapPin, Heart } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
 
@@ -55,12 +56,16 @@ export default function FavoritesList() {
           <div key={fav.hotelId} className="card overflow-hidden">
             {fav.heroImage && (
               <Link href={`/hotels/${fav.hotelId}`}>
-                <img
+                <div className="relative aspect-[4/3] w-full">
+                  <Image
                   src={fav.heroImage}
                   alt={locale === "ar" ? fav.nameAr : fav.nameEn}
-                  className="aspect-[4/3] w-full object-cover img-elegant"
-                  loading="lazy"
-                />
+                    fill
+                    unoptimized
+                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover img-elegant"
+                  />
+                </div>
               </Link>
             )}
             <div className="p-4">

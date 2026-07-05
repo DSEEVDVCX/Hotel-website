@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
 import { Users, Bed, ArrowRight } from "@phosphor-icons/react";
@@ -82,7 +83,7 @@ export function AvailableRooms({ roomTypes, hotelId, checkIn, checkOut }: Availa
               <div className="flex flex-col md:flex-row">
                 {/* Image */}
                 <div className="relative h-52 w-full overflow-hidden md:h-auto md:w-64 shrink-0">
-                  <img src={photo} alt={name ?? ""} loading="lazy" className="h-full w-full object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
+                  <Image src={photo} alt={name ?? ""} fill unoptimized sizes="(min-width: 768px) 16rem, 100vw" className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-surface-dark/40 to-transparent" />
                 </div>
 

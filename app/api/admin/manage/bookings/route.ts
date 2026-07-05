@@ -1,30 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
+import { parseEnumParam } from "@/lib/validation";
+import { BookingStatus } from "@prisma/client";
+
+const bookingStatuses = Object.values(BookingStatus);
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await requireRole("ADMIN");
+  if (session instanceof NextResponse) return session;
 
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const hotel = await prisma.hotel.findFirst({ where: { ownerId: userId } });
+  const hotel = await prisma.hotel.findFirst({ where: { ownerId: session.userId } });
   if (!hotel) {
     return NextResponse.json({ bookings: [] });
   }
 
-  const status = req.nextUrl.searchParams.get("status");
+  const status = parseEnumParam(req.nextUrl.searchParams.get("status"), bookingStatuses);
+  if (status === null) {
+    return NextResponse.json({ error: "Invalid booking status" }, { status: 422 });
+  }
 
   const bookings = await prisma.booking.findMany({
     where: {
       hotelId: hotel.id,
-      ...(status ? { status: status as never } : {}),
+      ...(status ? { status } : {}),
     },
     include: {
       guest: {

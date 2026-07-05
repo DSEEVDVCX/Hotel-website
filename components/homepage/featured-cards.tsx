@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "motion/react";
 import { Star, MapPin, ArrowRight } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
@@ -64,13 +65,14 @@ export default function FeaturedCards({ properties }: { properties: FeaturedProp
               >
                 {/* Accessible image with alt (Priority 1: alt-text) */}
                 <div className="relative aspect-[4/3] overflow-hidden">
-                  <img
+                  <Image
                     src={prop.heroImage || fallbackImage(prop.hotelId, i)}
                     alt={locale === "ar" ? prop.nameAr : prop.nameEn}
-                    className="h-full w-full object-cover img-elegant transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    unoptimized
+                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105"
                     style={{ transitionTimingFunction: "var(--ease-standard)" }}
-                    loading="lazy"
-                    decoding="async"
                   />
                   {prop.isCurated && (
                     <span className="absolute start-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[0.65rem] font-semibold text-surface-raised shadow-sm">

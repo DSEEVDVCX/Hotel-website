@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/payments";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -14,12 +15,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const existingEvent = await prisma.$queryRaw<{ id: string }[]>`
-    SELECT id FROM "Payment" WHERE "providerPaymentRef" = ${event.id} LIMIT 1
-  `.catch(() => []);
-
-  if (existingEvent && existingEvent.length > 0) {
-    return NextResponse.json({ received: true, duplicate: true });
+  try {
+    await prisma.webhookEvent.create({
+      data: { id: event.id, provider: "stripe", eventType: event.type },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    throw error;
   }
 
   switch (event.type) {
@@ -65,6 +69,9 @@ export async function POST(req: NextRequest) {
           await tx.booking.update({
             where: { id: payment.bookingId },
             data: { status: "FAILED" },
+          });
+          await tx.roomReservation.deleteMany({
+            where: { bookingLineItem: { bookingId: payment.bookingId } },
           });
         });
       }

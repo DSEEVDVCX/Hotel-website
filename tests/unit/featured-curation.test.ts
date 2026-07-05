@@ -12,6 +12,9 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
     featuredSelection: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -36,6 +39,7 @@ import { PUT as reorderFeatured } from "@/app/api/admin/featured/reorder/route";
 const mockAuth = auth as unknown as ReturnType<typeof vi.fn>;
 const mockPrisma = prisma as unknown as {
   hotel: { findUnique: ReturnType<typeof vi.fn> };
+  user: { findUnique: ReturnType<typeof vi.fn> };
   featuredSelection: {
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
@@ -51,6 +55,12 @@ describe("Featured Curation (T056)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuth.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: "admin-1",
+      role: "ADMIN",
+      status: "ACTIVE",
+      isPlatformAdmin: true,
+    });
   });
 
   it("adds an ACTIVE hotel to featured", async () => {

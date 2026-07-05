@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useLanguage } from "@/app/providers";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -240,9 +241,12 @@ export function MediaManager({ ownerType, ownerId }: MediaManagerProps) {
                   >
                     ⠿
                   </span>
-                  <img
+                  <Image
                     src={asset.url}
                     alt={locale === "ar" ? asset.captionAr ?? "" : asset.captionEn ?? ""}
+                    width={96}
+                    height={64}
+                    unoptimized
                     className="h-16 w-24 rounded-lg border border-border object-cover"
                   />
                   <div className="grid flex-1 gap-2 sm:grid-cols-2">

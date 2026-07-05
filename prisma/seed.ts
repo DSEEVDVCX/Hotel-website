@@ -19,6 +19,7 @@ async function main() {
       passwordHash: adminPassword,
       name: "Platform Admin",
       role: "ADMIN",
+      isPlatformAdmin: true,
     },
   });
 

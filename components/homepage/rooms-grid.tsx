@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useScroll, useTransform } from "motion/react";
 import { Star, Users, Bed, ArrowRight } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
@@ -57,12 +58,14 @@ export default function RoomsGrid({
                   <Link href={`/rooms/${room.id}`} className="card group flex h-full flex-col" aria-label={locale === "ar" ? room.nameAr : room.nameEn}>
                     {/* Image — overflow-hidden for scale effect */}
                     <div className={`relative overflow-hidden ${isLarge ? "flex-1 min-h-[280px]" : "aspect-[4/3]"}`}>
-                      <img
+                      <Image
                         src={room.photos?.[0] || `https://picsum.photos/seed/sewar-room-${room.id.slice(-4)}/700/525`}
                         alt={locale === "ar" ? room.nameAr : room.nameEn}
-                        className="h-full w-full object-cover img-elegant transition-transform duration-700 group-hover:scale-105"
+                        fill
+                        unoptimized
+                        sizes={isLarge ? "(min-width: 1024px) 66vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"}
+                        className="object-cover img-elegant transition-transform duration-700 group-hover:scale-105"
                         style={{ transitionTimingFunction: "var(--ease-standard)" }}
-                        loading="lazy" decoding="async"
                       />
                       <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-gold-deep via-gold to-gold-deep" />
                       <div className="absolute start-3 top-3 flex items-center gap-0.5 rounded-full bg-surface-dark/70 px-2.5 py-1 backdrop-blur-sm">

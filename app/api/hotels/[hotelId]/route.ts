@@ -19,8 +19,8 @@ export async function GET(
           new Date(checkIn),
           new Date(checkOut)
         )
-      : await prisma.hotel.findUnique({
-          where: { id: hotelId },
+      : await prisma.hotel.findFirst({
+          where: { id: hotelId, status: "ACTIVE" },
           include: {
             roomTypes: {
               include: {

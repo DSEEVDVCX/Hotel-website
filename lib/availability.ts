@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 
+const blockingBookingStatuses = ["PENDING", "CONFIRMED", "CHECKED_IN"] as const;
+
 export interface AvailableRoomType {
   hotelId: string;
   hotelNameAr: string;
@@ -43,6 +45,7 @@ export async function searchAvailableRooms(params: {
                   AND: [
                     { checkIn: { lt: checkOut } },
                     { checkOut: { gt: checkIn } },
+                    { bookingLineItem: { booking: { status: { in: [...blockingBookingStatuses] } } } },
                   ],
                 },
               },
@@ -102,7 +105,11 @@ export function getEffectiveNightlyRate(
 ): number {
   const basePrice = roomType.basePrice.toNumber();
 
-  for (const rate of roomType.rates) {
+  const rates = [...roomType.rates].sort(
+    (a, b) => b.startDate.getTime() - a.startDate.getTime()
+  );
+
+  for (const rate of rates) {
     if (date >= rate.startDate && date <= rate.endDate) {
       return rate.nightlyPrice.toNumber();
     }
@@ -112,8 +119,8 @@ export function getEffectiveNightlyRate(
 }
 
 export async function getHotelWithAvailability(hotelId: string, checkIn: Date, checkOut: Date) {
-  const hotel = await prisma.hotel.findUnique({
-    where: { id: hotelId },
+  const hotel = await prisma.hotel.findFirst({
+    where: { id: hotelId, status: "ACTIVE" },
     include: {
       roomTypes: {
         include: {
@@ -125,6 +132,7 @@ export async function getHotelWithAvailability(hotelId: string, checkIn: Date, c
                   AND: [
                     { checkIn: { lt: checkOut } },
                     { checkOut: { gt: checkIn } },
+                    { bookingLineItem: { booking: { status: { in: [...blockingBookingStatuses] } } } },
                   ],
                 },
               },

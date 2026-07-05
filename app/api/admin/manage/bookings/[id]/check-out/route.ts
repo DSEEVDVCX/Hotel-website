@@ -40,28 +40,35 @@ export async function PATCH(
   const totalPrice = booking.totalPrice.toNumber();
   const payoutAmount = Number((totalPrice * 0.9).toFixed(2));
 
-  const result = await prisma.$transaction(async (tx) => {
-    await tx.booking.update({
-      where: { id },
-      data: { status: "CHECKED_OUT" },
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.booking.updateMany({
+        where: { id, status: "CHECKED_IN" },
+        data: { status: "COMPLETED" },
+      });
+      if (updated.count !== 1) {
+        throw new Error("Booking was already checked out or changed status");
+      }
+
+      const completed = await tx.booking.findUniqueOrThrow({ where: { id } });
+
+      const payout = await tx.payout.create({
+        data: {
+          ownerId: booking.hotel.ownerId,
+          bookingId: id,
+          amount: payoutAmount,
+          status: "PENDING",
+        },
+      });
+
+      return { booking: completed, payout };
     });
 
-    const completed = await tx.booking.update({
-      where: { id },
-      data: { status: "COMPLETED" },
-    });
-
-    const payout = await tx.payout.create({
-      data: {
-        ownerId: booking.hotel.ownerId,
-        bookingId: id,
-        amount: payoutAmount,
-        status: "PENDING",
-      },
-    });
-
-    return { booking: completed, payout };
-  });
-
-  return NextResponse.json(result);
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json(
+      { error: "Booking was already checked out or changed status" },
+      { status: 409 }
+    );
+  }
 }

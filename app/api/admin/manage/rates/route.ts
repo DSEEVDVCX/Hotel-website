@@ -41,6 +41,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const overlappingRate = await prisma.rate.findFirst({
+    where: {
+      roomTypeId,
+      startDate: { lte: end },
+      endDate: { gte: start },
+    },
+  });
+  if (overlappingRate) {
+    return NextResponse.json(
+      { error: "Rate range overlaps an existing rate" },
+      { status: 409 }
+    );
+  }
+
   try {
     const rate = await prisma.rate.create({
       data: {

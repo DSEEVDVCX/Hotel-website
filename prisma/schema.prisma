@@ -60,6 +60,7 @@ model User {
   passwordHash String
   name         String
   role         UserRole @default(GUEST)
+  isPlatformAdmin Boolean @default(false)
   phoneNumber  String?
   status       String   @default("ACTIVE")
   createdAt    DateTime @default(now())
@@ -247,7 +248,7 @@ model Payment {
 model Payout {
   id          String        @id @default(cuid())
   ownerId     String
-  bookingId   String
+  bookingId   String        @unique
   amount      Decimal       @db.Decimal(10, 2)
   status      PayoutStatus  @default(PENDING)
   payoutCycle String?
@@ -259,6 +260,16 @@ model Payout {
 
   @@index([ownerId])
   @@index([status])
+}
+
+model WebhookEvent {
+  id          String   @id
+  provider    String   @default("stripe")
+  eventType   String
+  processedAt DateTime @default(now())
+
+  @@index([provider])
+  @@index([eventType])
 }
 
 model Review {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useLanguage } from "@/app/providers";
 import { Star, MapPin, ArrowRight } from "@phosphor-icons/react";
 import type { AvailableRoomType } from "@/lib/availability";
@@ -33,7 +34,7 @@ export function ResultCard({ room, checkIn, checkOut }: ResultCardProps) {
   return (
     <div className="card group overflow-hidden">
       <div className="relative aspect-[4/3] overflow-hidden">
-        <img src={photo} alt={name} className="h-full w-full object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} loading="lazy" />
+        <Image src={photo} alt={name} fill unoptimized sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
         {room.availableRooms > 0 && (
           <span className="absolute start-3 top-3 rounded-full bg-success/90 px-2.5 py-1 text-xs font-semibold text-on-dark">
             {room.availableRooms} {t.search.availableRooms}

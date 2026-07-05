@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { requirePlatformAdmin } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { createFeaturedSchema } from "@/lib/schemas/featured";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user || (session.user as { role: string }).role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requirePlatformAdmin();
+  if (session instanceof NextResponse) return session;
 
   const featured = await prisma.featuredSelection.findMany({
     orderBy: { sortOrder: "asc" },
@@ -32,12 +30,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || (session.user as { role: string }).role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requirePlatformAdmin();
+  if (session instanceof NextResponse) return session;
 
-  const userId = (session.user as { id: string }).id;
+  const userId = session.userId;
 
   const body = await req.json();
   const parsed = createFeaturedSchema.safeParse(body);

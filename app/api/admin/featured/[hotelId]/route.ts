@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requirePlatformAdmin } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { updateFeaturedSchema } from "@/lib/schemas/featured";
 
@@ -7,10 +7,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ hotelId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user || (session.user as { role: string }).role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requirePlatformAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { hotelId } = await params;
 
@@ -45,10 +43,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ hotelId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user || (session.user as { role: string }).role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requirePlatformAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { hotelId } = await params;
 

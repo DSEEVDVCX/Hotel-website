@@ -6,6 +6,9 @@ describe("Payment Webhook Idempotency (Principle VII)", () => {
     await prisma.payment.deleteMany({
       where: { providerPaymentRef: { startsWith: "test-webhook-" } },
     });
+    await prisma.booking.deleteMany({
+      where: { idempotencyKey: "test-webhook-booking-1" },
+    });
   });
 
   it("does not double-process a duplicate webhook event", async () => {

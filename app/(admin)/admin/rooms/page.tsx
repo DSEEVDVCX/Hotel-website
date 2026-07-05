@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useLanguage } from "@/app/providers";
 import { Button } from "@/components/ui/Button";
@@ -187,12 +188,16 @@ export default function AdminRoomsPage() {
                 {roomTypes.map((rt) => (
                   <div key={rt.id} className="card overflow-hidden">
                     {rt.photos[0] && (
-                      <img
+                      <div className="relative aspect-[16/9] w-full">
+                        <Image
                         src={rt.photos[0]}
                         alt={locale === "ar" ? rt.nameAr : rt.nameEn}
-                        className="aspect-[16/9] w-full object-cover img-elegant"
-                        loading="lazy"
-                      />
+                          fill
+                          unoptimized
+                          sizes="(min-width: 768px) 50vw, 100vw"
+                          className="object-cover img-elegant"
+                        />
+                      </div>
                     )}
                     <div className="p-4">
                       <h3 className="font-display font-bold text-on-surface">{locale === "ar" ? rt.nameAr : rt.nameEn}</h3>
@@ -427,9 +432,12 @@ function RoomTypeForm({
           {photos.map((url, i) => (
             <div key={i} className="flex items-center gap-2">
               {url.trim() ? (
-                <img
+                <Image
                   src={url.trim()}
                   alt=""
+                  width={64}
+                  height={44}
+                  unoptimized
                   className="h-11 w-16 flex-none rounded-md object-cover"
                   onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                   onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}

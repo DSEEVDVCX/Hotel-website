@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
 import { Camera, CaretLeft, CaretRight } from "@phosphor-icons/react";
@@ -46,7 +47,9 @@ export function PhotoGallery({ images }: { images: GalleryImage[] }) {
           transition={{ duration: 0.4, ease: [0.2, 0, 0, 1] }}
           className="relative"
         >
-          <img src={active.url} alt={caption ?? ""} className="h-[360px] w-full object-cover img-elegant md:h-[500px]" loading="lazy" />
+          <div className="relative h-[360px] md:h-[500px]">
+            <Image src={active.url} alt={caption ?? ""} fill unoptimized sizes="100vw" className="object-cover img-elegant" />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-t from-surface-dark/50 to-transparent" />
         </motion.div>
 
@@ -94,7 +97,7 @@ export function PhotoGallery({ images }: { images: GalleryImage[] }) {
                 className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${isActive ? "border-primary opacity-100" : "border-border opacity-60 hover:opacity-100"}`}
                 style={{ transitionTimingFunction: "var(--ease-standard)" }}
               >
-                <img src={img.url} alt={thumbCaption ?? ""} loading="lazy" className="h-full w-full object-cover" />
+                <Image src={img.url} alt={thumbCaption ?? ""} fill unoptimized sizes="6rem" className="object-cover" />
               </button>
             );
           })}
@@ -104,7 +107,9 @@ export function PhotoGallery({ images }: { images: GalleryImage[] }) {
       {/* Fullscreen */}
       {fullscreen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dark/95 backdrop-blur-sm" onClick={() => setFullscreen(false)} role="dialog" aria-modal="true">
-          <img src={active.url} alt={caption ?? ""} className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain" />
+          <div className="relative h-[90vh] w-[90vw]">
+            <Image src={active.url} alt={caption ?? ""} fill unoptimized sizes="90vw" className="rounded-xl object-contain" />
+          </div>
           <button onClick={(e) => { e.stopPropagation(); goPrev(); }} aria-label="Previous" className="absolute start-6 flex min-h-12 min-w-12 items-center justify-center rounded-full bg-on-dark/10 text-on-dark hover:bg-on-dark/20">
             <CaretLeft size={28} aria-hidden />
           </button>

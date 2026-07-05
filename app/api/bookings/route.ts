@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getActiveSession } from "@/lib/session";
 import { createBooking } from "@/lib/bookings";
 import { createBookingSchema } from "@/lib/schemas/booking";
+import { parseEnumParam } from "@/lib/validation";
+import { BookingStatus } from "@prisma/client";
+
+const bookingStatuses = Object.values(BookingStatus);
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getActiveSession();
+  if (session instanceof NextResponse) return session;
+  if (session.role !== "GUEST") {
+    return NextResponse.json({ error: "Only guests can create bookings" }, { status: 403 });
   }
-
-  const userId = (session.user as { id: string }).id;
   const body = await req.json();
 
   const result = createBookingSchema.safeParse(body);
@@ -23,14 +26,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const { booking, created } = await createBooking({
-      guestId: userId,
+      guestId: session.userId,
       hotelId: result.data.hotelId,
       checkIn: new Date(result.data.checkIn),
       checkOut: new Date(result.data.checkOut),
       guestCount: result.data.guestCount,
       idempotencyKey: result.data.idempotencyKey,
       lineItems: result.data.lineItems,
-      paymentMethodId: result.data.paymentMethodId,
+      paymentIntentId: result.data.paymentIntentId,
     });
 
     return NextResponse.json(
@@ -50,18 +53,17 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getActiveSession();
+  if (session instanceof NextResponse) return session;
+  const status = parseEnumParam(req.nextUrl.searchParams.get("status"), bookingStatuses);
+  if (status === null) {
+    return NextResponse.json({ error: "Invalid booking status" }, { status: 422 });
   }
-
-  const userId = (session.user as { id: string }).id;
-  const status = req.nextUrl.searchParams.get("status");
 
   const bookings = await prisma.booking.findMany({
     where: {
-      guestId: userId,
-      ...(status ? { status: status as never } : {}),
+      guestId: session.userId,
+      ...(status ? { status } : {}),
     },
     include: {
       hotel: { select: { nameAr: true, nameEn: true, city: true } },

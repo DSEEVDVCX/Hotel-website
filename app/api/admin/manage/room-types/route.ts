@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
   const requestedHotelId = req.nextUrl.searchParams.get("hotelId");
 
   const hotel = requestedHotelId
-    ? await prisma.hotel.findUnique({ where: { id: requestedHotelId } })
+    ? await prisma.hotel.findFirst({ where: { id: requestedHotelId, ownerId: userId } })
     : await prisma.hotel.findFirst({ where: { ownerId: userId } });
   if (!hotel) {
     return NextResponse.json({ roomTypes: [] });
