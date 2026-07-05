@@ -4,6 +4,8 @@ out
 .DS_Store
 *.log
 .env*
+!.env.example
+!.env.test.example
 prisma/migrations/dev.db
 test-results/
 playwright-report/

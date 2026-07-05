@@ -2,16 +2,29 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { prisma } from "@/lib/db";
 
 describe("Control Panel → Search Sync (FR-009)", () => {
+  // Scope cleanup to this test's own records so shared seed data
+  // (seed-room-*, the seed guest) survives for other test files.
   beforeEach(async () => {
-    await prisma.roomReservation.deleteMany();
-    await prisma.bookingLineItem.deleteMany();
-    await prisma.booking.deleteMany();
-    await prisma.room.deleteMany();
-    await prisma.roomType.deleteMany();
-    await prisma.hotel.deleteMany();
-    await prisma.user.deleteMany({
-      where: { email: { in: ["test-sync-admin@hotel.com", "test-sync-rate@hotel.com"] } },
+    const testEmails = ["test-sync-admin@hotel.com", "test-sync-rate@hotel.com"];
+    const admins = await prisma.user.findMany({
+      where: { email: { in: testEmails } },
+      select: { id: true },
     });
+    const ownerIds = admins.map((a) => a.id);
+    if (ownerIds.length) {
+      const hotels = await prisma.hotel.findMany({
+        where: { ownerId: { in: ownerIds } },
+        select: { id: true },
+      });
+      const hotelIds = hotels.map((h) => h.id);
+      if (hotelIds.length) {
+        // Rooms cascade to their reservations; roomTypes cascade to their rates.
+        await prisma.room.deleteMany({ where: { hotelId: { in: hotelIds } } });
+        await prisma.roomType.deleteMany({ where: { hotelId: { in: hotelIds } } });
+        await prisma.hotel.deleteMany({ where: { id: { in: hotelIds } } });
+      }
+    }
+    await prisma.user.deleteMany({ where: { email: { in: testEmails } } });
   });
 
   it("reflects room availability changes in search immediately", async () => {
