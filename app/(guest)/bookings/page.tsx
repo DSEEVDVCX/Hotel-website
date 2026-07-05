@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/app/providers";
 import { Button } from "@/components/ui/Button";
 
 const statusColors: Record<string, string> = {
-  CONFIRMED: "text-green-600",
-  CANCELLED: "text-red-500",
-  CHECKED_IN: "text-blue-600",
-  COMPLETED: "text-gray-500",
-  PENDING: "text-yellow-600",
-  FAILED: "text-red-700",
+  CONFIRMED: "text-success",
+  CANCELLED: "text-error",
+  CHECKED_IN: "text-primary",
+  COMPLETED: "text-on-surface-subtle",
+  PENDING: "text-gold-deep",
+  FAILED: "text-error",
 };
 
 export default function MyBookingsPage() {
@@ -38,49 +39,61 @@ export default function MyBookingsPage() {
     }
   };
 
-  if (loading) return <main className="px-4 py-8">...</main>;
+  if (loading) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-primary" />
+      </main>
+    );
+  }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-[var(--color-text)]">{t.booking.myBookings}</h1>
-      {bookings.length === 0 ? (
-        <p className="text-[var(--color-text-muted)]">{t.search.noResults}</p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {bookings.map((booking) => {
-            const hotelName = locale === "ar" ? booking.hotel?.nameAr : booking.hotel?.nameEn;
-            return (
-              <div
-                key={booking.id}
-                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-[var(--color-text)]">{hotelName}</h3>
-                    <p className="text-sm text-[var(--color-text-muted)]">
-                      {new Date(booking.checkIn).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US")} →{" "}
-                      {new Date(booking.checkOut).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US")}
-                    </p>
-                    <p className="text-sm text-[var(--color-text-muted)]">
-                      {t.booking.total}: {booking.totalPrice} SAR
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`text-sm font-semibold ${statusColors[booking.status] || ""}`}>
-                      {booking.status}
-                    </span>
-                    {(booking.status === "CONFIRMED" || booking.status === "CHECKED_IN") && (
-                      <Button variant="outline" size="sm" onClick={() => handleCancel(booking.id)}>
-                        {t.booking.cancel}
-                      </Button>
-                    )}
+      <main className="mx-auto max-w-3xl px-5 py-12 lg:px-8">
+        <h1 className="display-sm mb-8 font-display text-primary">{t.booking.myBookings}</h1>
+        {bookings.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-surface-muted p-12 text-center">
+            <p className="text-on-surface-muted">{t.guestAccount.noBookings}</p>
+            <Link href="/" className="btn btn-primary mt-4 inline-flex">
+              {locale === "ar" ? "تصفّح الغرف" : "Browse Rooms"}
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {bookings.map((booking) => {
+              const hotelName = locale === "ar" ? booking.hotel?.nameAr : booking.hotel?.nameEn;
+              const currency = locale === "ar" ? "ر.س" : "SAR";
+              return (
+                <div key={booking.id} className="card p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-on-surface">{hotelName}</h3>
+                      <p className="mt-1 text-sm text-on-surface-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {new Date(booking.checkIn).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US")} →{" "}
+                        {new Date(booking.checkOut).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US")}
+                      </p>
+                      <p className="mt-1 text-sm text-on-surface-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {t.booking.total}: {booking.totalPrice} {currency}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`font-kufi text-sm font-semibold ${statusColors[booking.status] || "text-on-surface-muted"}`}>
+                        {booking.status}
+                      </span>
+                      <Link href={`/booking/${booking.id}`} className="link-underline text-sm font-semibold text-primary-hover">
+                        {t.guestAccount.bookingDetails}
+                      </Link>
+                      {(booking.status === "CONFIRMED" || booking.status === "CHECKED_IN") && (
+                        <Button variant="outline" size="sm" onClick={() => handleCancel(booking.id)}>
+                          {t.booking.cancel}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </main>
+              );
+            })}
+          </div>
+        )}
+      </main>
   );
 }

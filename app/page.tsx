@@ -1,39 +1,34 @@
-"use client";
-
+import { getAllRoomTypes } from "@/lib/room-types";
+import { getFeaturedProperties } from "@/lib/featured";
 import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import About from "@/components/About";
-import Vision from "@/components/Vision";
-import Stats from "@/components/Stats";
-import Destinations from "@/components/Destinations";
-import Experiences from "@/components/Experiences";
-import Values from "@/components/Values";
-import Testimonials from "@/components/Testimonials";
-import News from "@/components/News";
-import Contact from "@/components/Contact";
-import Footer from "@/components/Footer";
-import Intro from "@/components/Intro";
+import dynamic from "next/dynamic";
+import RoomsGrid from "@/components/homepage/rooms-grid";
+import FeaturedCards from "@/components/homepage/featured-cards";
+import SiteFooter from "@/components/homepage/site-footer";
 
-export default function Home() {
+const HotelHero = dynamic(() => import("@/components/homepage/hero"), { ssr: true, loading: () => <div className="min-h-[100dvh] bg-surface-dark" /> });
+const Marquee = dynamic(() => import("@/components/homepage/marquee"), { ssr: true });
+const ContentSections = dynamic(() => import("@/components/homepage/content-sections"), { ssr: true, loading: () => <div className="h-96" /> });
+
+export const revalidate = 300;
+
+export default async function Home() {
+  const [rooms, featured] = await Promise.all([
+    getAllRoomTypes(),
+    getFeaturedProperties(6),
+  ]);
+
   return (
     <>
-      <Intro />
-      <div className="grain" aria-hidden />
-
-      <main>
-        <Navbar />
-        <Hero />
-        <About />
-        <Vision />
-        <Stats />
-        <Destinations />
-        <Experiences />
-        <Values />
-        <Testimonials />
-        <News />
-        <Contact />
-        <Footer />
+      <Navbar heroDark />
+      <main id="main" className="overflow-x-hidden w-full max-w-full">
+        <HotelHero />
+        <Marquee />
+        <RoomsGrid rooms={rooms.slice(0, 3)} viewAllHref="/rooms" />
+        {featured.length > 0 && <FeaturedCards properties={featured} />}
+        <ContentSections />
       </main>
+      <SiteFooter />
     </>
   );
 }

@@ -23,17 +23,17 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dark/60 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div
-        className="mx-4 w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-2xl"
+        className="card mx-4 w-full max-w-md p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {title && <h2 className="mb-4 text-lg font-semibold text-[var(--color-text)]">{title}</h2>}
+        {title && <h2 className="mb-4 font-display text-lg font-bold text-on-surface">{title}</h2>}
         {children}
       </div>
     </div>

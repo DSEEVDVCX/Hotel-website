@@ -16,7 +16,7 @@ describe("Payment Webhook Idempotency (Principle VII)", () => {
     const checkIn = new Date("2026-10-01");
     const checkOut = new Date("2026-10-03");
 
-    const booking = await prisma.booking.create({
+    await prisma.booking.create({
       data: {
         guestId: guest.id,
         hotelId: room.hotelId,

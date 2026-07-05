@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('GUEST', 'HOTELIER', 'ADMIN');
+CREATE TYPE "UserRole" AS ENUM ('GUEST', 'ADMIN');
 
 -- CreateEnum
 CREATE TYPE "HotelStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED');
@@ -34,7 +34,7 @@ CREATE TABLE "User" (
 -- CreateTable
 CREATE TABLE "Hotel" (
     "id" TEXT NOT NULL,
-    "hotelierId" TEXT NOT NULL,
+    "ownerId" TEXT NOT NULL,
     "nameAr" TEXT NOT NULL,
     "nameEn" TEXT NOT NULL,
     "descriptionAr" TEXT NOT NULL,
@@ -164,7 +164,7 @@ CREATE TABLE "Payment" (
 -- CreateTable
 CREATE TABLE "Payout" (
     "id" TEXT NOT NULL,
-    "hotelierId" TEXT NOT NULL,
+    "ownerId" TEXT NOT NULL,
     "bookingId" TEXT NOT NULL,
     "amount" DECIMAL(10,2) NOT NULL,
     "status" "PayoutStatus" NOT NULL DEFAULT 'PENDING',
@@ -250,7 +250,7 @@ CREATE INDEX "RoomReservation_bookingLineItemId_idx" ON "RoomReservation"("booki
 CREATE INDEX "Payment_status_idx" ON "Payment"("status");
 
 -- CreateIndex
-CREATE INDEX "Payout_hotelierId_idx" ON "Payout"("hotelierId");
+CREATE INDEX "Payout_ownerId_idx" ON "Payout"("ownerId");
 
 -- CreateIndex
 CREATE INDEX "Payout_status_idx" ON "Payout"("status");
@@ -259,7 +259,7 @@ CREATE INDEX "Payout_status_idx" ON "Payout"("status");
 CREATE INDEX "Review_hotelId_idx" ON "Review"("hotelId");
 
 -- AddForeignKey
-ALTER TABLE "Hotel" ADD CONSTRAINT "Hotel_hotelierId_fkey" FOREIGN KEY ("hotelierId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Hotel" ADD CONSTRAINT "Hotel_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RoomType" ADD CONSTRAINT "RoomType_hotelId_fkey" FOREIGN KEY ("hotelId") REFERENCES "Hotel"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -295,7 +295,7 @@ ALTER TABLE "RoomReservation" ADD CONSTRAINT "RoomReservation_roomId_fkey" FOREI
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payout" ADD CONSTRAINT "Payout_hotelierId_fkey" FOREIGN KEY ("hotelierId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Payout" ADD CONSTRAINT "Payout_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Payout" ADD CONSTRAINT "Payout_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -336,3 +336,82 @@ ALTER TABLE "Review" ADD CONSTRAINT "Review_rating_check" CHECK ("rating" >= 1 A
 
 -- Add check constraint: checkout must be after checkin
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_dates_check" CHECK ("checkOut" > "checkIn");
+
+-- CreateTable MediaAsset
+CREATE TYPE "MediaOwner" AS ENUM ('HOTEL', 'ROOM_TYPE');
+
+CREATE TABLE "MediaAsset" (
+    "id" TEXT NOT NULL,
+    "ownerType" "MediaOwner" NOT NULL DEFAULT 'HOTEL',
+    "ownerId" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "captionAr" TEXT,
+    "captionEn" TEXT,
+    "uploadedBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "MediaAsset_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable FeaturedSelection
+CREATE TABLE "FeaturedSelection" (
+    "id" TEXT NOT NULL,
+    "hotelId" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "curatedBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "FeaturedSelection_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable Favorite
+CREATE TABLE "Favorite" (
+    "id" TEXT NOT NULL,
+    "guestId" TEXT NOT NULL,
+    "hotelId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Favorite_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex for MediaAsset
+CREATE INDEX "MediaAsset_ownerType_ownerId_idx" ON "MediaAsset"("ownerType", "ownerId");
+CREATE INDEX "MediaAsset_ownerId_idx" ON "MediaAsset"("ownerId");
+
+-- CreateIndex for FeaturedSelection
+CREATE UNIQUE INDEX "FeaturedSelection_hotelId_key" ON "FeaturedSelection"("hotelId");
+CREATE INDEX "FeaturedSelection_sortOrder_idx" ON "FeaturedSelection"("sortOrder");
+
+-- CreateIndex for Favorite
+CREATE UNIQUE INDEX "Favorite_guestId_hotelId_key" ON "Favorite"("guestId", "hotelId");
+CREATE INDEX "Favorite_guestId_idx" ON "Favorite"("guestId");
+CREATE INDEX "Favorite_hotelId_idx" ON "Favorite"("hotelId");
+
+-- AddForeignKey for MediaAsset
+ALTER TABLE "MediaAsset" ADD CONSTRAINT "MediaAsset_uploadedBy_fkey" FOREIGN KEY ("uploadedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey for FeaturedSelection
+ALTER TABLE "FeaturedSelection" ADD CONSTRAINT "FeaturedSelection_hotelId_fkey" FOREIGN KEY ("hotelId") REFERENCES "Hotel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "FeaturedSelection" ADD CONSTRAINT "FeaturedSelection_curatedBy_fkey" FOREIGN KEY ("curatedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey for Favorite
+ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_guestId_fkey" FOREIGN KEY ("guestId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_hotelId_fkey" FOREIGN KEY ("hotelId") REFERENCES "Hotel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Auto-populate stayRange from checkIn/checkOut so Prisma inserts (which do
+-- not set the DB-only stayRange column) still satisfy the NOT NULL + exclusion
+-- constraint. Runs on INSERT and whenever checkIn/checkOut change on UPDATE.
+CREATE OR REPLACE FUNCTION "RoomReservation_set_stayRange"()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW."stayRange" = daterange(NEW."checkIn", NEW."checkOut", '[)');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "RoomReservation_stayRange_trigger"
+BEFORE INSERT OR UPDATE OF "checkIn", "checkOut" ON "RoomReservation"
+FOR EACH ROW
+EXECUTE FUNCTION "RoomReservation_set_stayRange"();

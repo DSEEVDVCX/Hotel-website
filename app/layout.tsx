@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Tajawal, Playfair_Display, Inter } from "next/font/google";
+import { Tajawal, Amiri, Reem_Kufi, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider, ThemeProvider, AuthSessionProvider } from "./providers";
 
@@ -10,31 +10,38 @@ const tajawal = Tajawal({
   display: "swap",
 });
 
-// Elegant serif display for English headings — refined luxury.
+// Luxury classical Arabic display font for headings
+const amiri = Amiri({
+  subsets: ["arabic", "latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-display-ar",
+  display: "swap",
+});
+
+// Modern Kufic for Arabic UI labels / numbers
+const reemKufi = Reem_Kufi({
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-kufi",
+  display: "swap",
+});
+
 const playfair = Playfair_Display({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-display-en",
   display: "swap",
 });
 
-// Clean grotesque for English body / labels.
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-en",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "سوار الذهب | Suwar Al Dhahab — أسواق الذهب الفاخرة",
+  title: "سوار الأندلس | ضيافة فاخرة بأناقة الأندلس",
   description:
-    "وجهة ذهبية فاخرة تجمع نخبة أسواق الذهب تحت سقفٍ واحد. عش تجربة تسوّقٍ استثنائية مع سوار الذهب.",
+    "وجهة ضيافة راقية تجمع نخبة الفنادق المختارة بعناية. تصفّح الغرف والأجنحة واحجز إقامتك المثالية مع سوار الأندلس.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Anti-flash: set data-theme before first paint to avoid a light→dark flicker.
   const themeScript = `(function(){try{var t=localStorage.getItem("theme");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
 
   return (
@@ -43,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
-        className={`${tajawal.variable} ${playfair.variable} ${inter.variable} antialiased`}
+        className={`${tajawal.variable} ${amiri.variable} ${reemKufi.variable} ${playfair.variable} antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider>

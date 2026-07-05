@@ -8,4 +8,10 @@ prisma/migrations/dev.db
 test-results/
 playwright-report/
 coverage/
-.tsbuildinfo
+*.tsbuildinfo
+# Local scratch
+del.txt
+# Firebase service-account key — never commit
+firebase-key.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json

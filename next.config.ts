@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ["argon2", "@node-rs/argon2"],
+  serverExternalPackages: ["argon2", "@node-rs/argon2", "firebase-admin"],
   images: {
     formats: ["image/avif", "image/webp"],
   },

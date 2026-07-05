@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const bookingLineItemSchema = z.object({
-  roomTypeId: z.string().cuid(),
+  roomTypeId: z.string().min(1),
   quantity: z.number().int().min(1),
 });
 
@@ -12,7 +12,7 @@ export const guestDetailsSchema = z.object({
 });
 
 export const createBookingSchema = z.object({
-  hotelId: z.string().cuid(),
+  hotelId: z.string().min(1),
   checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   guestCount: z.number().int().min(1),

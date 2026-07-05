@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/providers";
-import { Button } from "@/components/ui/Button";
+import { Star, MapPin, ArrowRight } from "@phosphor-icons/react";
 import type { AvailableRoomType } from "@/lib/availability";
 
 interface ResultCardProps {
@@ -16,6 +16,7 @@ export function ResultCard({ room, checkIn, checkOut }: ResultCardProps) {
   const { locale, t } = useLanguage();
   const name = locale === "ar" ? room.roomTypeNameAr : room.roomTypeNameEn;
   const hotelName = locale === "ar" ? room.hotelNameAr : room.hotelNameEn;
+  const currency = locale === "ar" ? "ر.س" : room.currency || "SAR";
 
   const handleBook = () => {
     const params = new URLSearchParams({
@@ -27,35 +28,45 @@ export function ResultCard({ room, checkIn, checkOut }: ResultCardProps) {
     router.push(`/hotels/${room.hotelId}?${params.toString()}`);
   };
 
+  const photo = room.photos?.[0] || `https://picsum.photos/seed/sewar-search-${room.roomTypeId?.slice(-4)}/600/400`;
+
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-shadow hover:shadow-lg">
-      {room.photos[0] && (
-        <img
-          src={room.photos[0]}
-          alt={name}
-          className="h-48 w-full rounded-lg object-cover"
-        />
-      )}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-[var(--color-text)]">{name}</h3>
-          <p className="text-sm text-[var(--color-text-muted)]">{hotelName} {"★".repeat(room.starRating)}</p>
-        </div>
-        <span className="rounded-full bg-[var(--color-surface-2)] px-3 py-1 text-sm">
-          {room.availableRooms} {t.search.availableRooms}
-        </span>
-      </div>
-      <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-3">
-        <div>
-          <span className="text-2xl font-bold text-[var(--color-accent)]">
-            {room.pricePerNight.toFixed(2)}
+    <div className="card group overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden">
+        <img src={photo} alt={name} className="h-full w-full object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} loading="lazy" />
+        {room.availableRooms > 0 && (
+          <span className="absolute start-3 top-3 rounded-full bg-success/90 px-2.5 py-1 text-xs font-semibold text-on-dark">
+            {room.availableRooms} {t.search.availableRooms}
           </span>
-          <span className="text-sm text-[var(--color-text-muted)]"> {t.search.perNight}</span>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            {t.booking.total}: {room.totalPrice.toFixed(2)} {room.currency}
-          </p>
+        )}
+      </div>
+      <div className="p-5">
+        <div className="flex items-center gap-1 text-primary" aria-label={`${room.starRating} ${locale === "ar" ? "نجوم" : "stars"}`}>
+          {Array.from({ length: room.starRating }).map((_, i) => (
+            <Star key={i} size={13} weight="fill" aria-hidden />
+          ))}
         </div>
-        <Button onClick={handleBook} size="md">{t.search.bookNow}</Button>
+        <h3 className="mt-1.5 font-display text-lg font-bold text-on-surface">{name}</h3>
+        <p className="mt-1 flex items-center gap-1 text-sm text-on-surface-muted">
+          <MapPin size={13} weight="light" aria-hidden />
+          {hotelName}
+        </p>
+
+        <div className="mt-4 flex items-end justify-between border-t border-border pt-3">
+          <div>
+            <span className="font-display text-xl font-bold text-primary-hover" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {room.pricePerNight.toFixed(0)} {currency}
+            </span>
+            <span className="ms-1 text-xs text-on-surface-muted">/ {t.search.perNight}</span>
+            <p className="mt-0.5 text-sm text-on-surface-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {t.booking.total}: {room.totalPrice.toFixed(0)} {currency}
+            </p>
+          </div>
+          <button onClick={handleBook} className="btn btn-primary text-xs">
+            {t.search.bookNow}
+            <ArrowRight size={14} weight="bold" className="rtl:rotate-180" aria-hidden />
+          </button>
+        </div>
       </div>
     </div>
   );

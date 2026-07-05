@@ -8,6 +8,7 @@ export default {
     path: path.join("prisma", "migrations"),
   },
 
-  // Pass the database URL to the migrate engine via the environment.
-  // This replaces the old `url` in the `datasource` block.
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
 } satisfies PrismaConfig;

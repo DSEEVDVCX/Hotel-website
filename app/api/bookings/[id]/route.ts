@@ -33,7 +33,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (booking.guestId !== userId && userRole !== "ADMIN" && userRole !== "HOTELIER") {
+  if (booking.guestId !== userId && userRole !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

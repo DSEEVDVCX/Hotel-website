@@ -1,106 +1,187 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { use, useEffect, useState } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/app/providers";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Check, ArrowRight, Bed, Users, CreditCard, Calendar } from "@phosphor-icons/react";
 
-export default function CheckoutPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { t } = useLanguage();
+export default function BookingDetailPage({ params }: { params: Promise<{ bookingId: string }> }) {
+  const { bookingId } = use(params);
+  const { t, locale } = useLanguage();
+  const [booking, setBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const hotelId = searchParams.get("hotelId") || "";
-  const roomTypeId = searchParams.get("roomTypeId") || "";
-  const checkIn = searchParams.get("checkIn") || "";
-  const checkOut = searchParams.get("checkOut") || "";
+  useEffect(() => {
+    fetch(`/api/bookings/${bookingId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("not found");
+        return res.json();
+      })
+      .then(setBooking)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [bookingId]);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [paymentMethodId, setPaymentMethodId] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [confirmation, setConfirmation] = useState<any>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const idempotencyKey = crypto.randomUUID();
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hotelId,
-          checkIn,
-          checkOut,
-          guestCount: 2,
-          idempotencyKey,
-          lineItems: [{ roomTypeId, quantity: 1 }],
-          guestDetails: { name, email, phoneNumber: phone },
-          paymentMethodId: paymentMethodId || "stripe_test_pi",
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Booking failed");
-        setLoading(false);
-        return;
-      }
-
-      setConfirmation(data);
-    } catch {
-      setError("Network error");
-    }
-    setLoading(false);
-  };
-
-  if (confirmation) {
+  if (loading) {
     return (
-      <main className="mx-auto max-w-md px-4 py-8">
-        <div className="rounded-xl border border-green-500 bg-green-50 p-6 text-center dark:bg-green-950">
-          <h1 className="text-xl font-bold text-green-700 dark:text-green-400">{t.booking.confirmation}</h1>
-          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            {t.booking.bookingId}: {confirmation.id}
-          </p>
-          <Button className="mt-4" onClick={() => router.push("/bookings")}>
-            {t.booking.myBookings}
-          </Button>
+      <main className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-primary" />
+      </main>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-on-surface-muted">{t.search.noResults}</p>
+          <Link href="/bookings" className="btn btn-secondary mt-4 inline-flex">{t.guestAccount.backToBookings}</Link>
         </div>
       </main>
     );
   }
 
+  const hotelName = locale === "ar" ? booking.hotel?.nameAr : booking.hotel?.nameEn;
+  const currency = locale === "ar" ? "ر.س" : "SAR";
+  const canCancel = booking.status === "CONFIRMED" || booking.status === "CHECKED_IN";
+
   return (
-    <main className="mx-auto max-w-md px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-[var(--color-text)]">{t.booking.title}</h1>
+      <main className="mx-auto max-w-3xl px-5 py-12 lg:px-8">
+        {/* Confirmation header */}
+        <div className="card mb-6 p-6">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${booking.status === "CANCELLED" ? "bg-error/10" : "bg-success/10"}`}>
+              {booking.status === "CANCELLED" ? (
+                <span className="text-error text-xl">✕</span>
+              ) : (
+                <Check size={24} className="text-success" weight="light" aria-hidden />
+              )}
+            </div>
+            <div>
+              <h1 className="font-display text-xl font-bold text-on-surface">{t.booking.confirmation}</h1>
+              <p className="text-sm text-on-surface-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {t.booking.bookingId}: <span className="font-bold text-on-surface">{booking.id}</span>
+              </p>
+            </div>
+            <span className="ms-auto rounded-full bg-primary-tint px-3 py-1 font-kufi text-sm font-semibold text-primary">
+              {booking.status}
+            </span>
+          </div>
+        </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-[var(--color-text)]">{t.booking.guestDetails}</h2>
-        <Input label={t.booking.fullName} value={name} onChange={(e) => setName(e.target.value)} required />
-        <Input label={t.booking.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <Input label={t.booking.phone} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        {/* Booking details */}
+        <div className="card mb-6 p-6">
+          <h2 className="mb-4 font-display text-lg font-bold text-on-surface">{locale === "ar" ? "تفاصيل الإقامة" : "Stay Details"}</h2>
+          <dl className="space-y-3 text-sm">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <dt className="flex items-center gap-2 text-on-surface-muted"><Calendar size={15} weight="light" aria-hidden />{t.search.checkIn}</dt>
+              <dd className="font-semibold text-on-surface" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {new Date(booking.checkIn).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <dt className="flex items-center gap-2 text-on-surface-muted"><Calendar size={15} weight="light" aria-hidden />{t.search.checkOut}</dt>
+              <dd className="font-semibold text-on-surface" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {new Date(booking.checkOut).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <dt className="flex items-center gap-2 text-on-surface-muted"><Users size={15} weight="light" aria-hidden />{t.search.guests}</dt>
+              <dd className="font-semibold text-on-surface" style={{ fontVariantNumeric: "tabular-nums" }}>{booking.guestCount}</dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-on-surface-muted">{locale === "ar" ? "الفندق" : "Hotel"}</dt>
+              <dd className="font-semibold text-on-surface">{hotelName}</dd>
+            </div>
+          </dl>
+        </div>
 
-        <h2 className="mt-4 text-lg font-semibold text-[var(--color-text)]">{t.booking.payment}</h2>
-        <Input
-          label="Payment Method ID"
-          value={paymentMethodId}
-          onChange={(e) => setPaymentMethodId(e.target.value)}
-          placeholder="stripe_payment_intent_id"
-        />
+        {/* Line items — room types and assigned rooms */}
+        {booking.lineItems && booking.lineItems.length > 0 && (
+          <div className="card mb-6 p-6">
+            <h2 className="mb-4 font-display text-lg font-bold text-on-surface">{t.booking.roomType}</h2>
+            <div className="space-y-4">
+              {booking.lineItems.map((item: any, i: number) => (
+                <div key={item.id ?? i} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-on-surface">
+                        {locale === "ar" ? item.roomType?.nameAr : item.roomType?.nameEn}
+                      </h3>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-on-surface-muted">
+                        <Bed size={14} weight="light" aria-hidden />
+                        {item.quantity} {locale === "ar" ? "غرفة" : "room(s)"}
+                      </p>
+                    </div>
+                    <p className="font-bold text-gold-deep" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {item.lineTotal} {currency}
+                    </p>
+                  </div>
+                  {item.reservations && item.reservations.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {item.reservations.map((res: any) => (
+                        <span key={res.id} className="rounded-full bg-surface-muted px-2.5 py-1 font-kufi text-xs text-on-surface-muted">
+                          {locale === "ar" ? "غرفة" : "Room"} #{res.room?.roomNumber ?? "—"}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {/* Payment info */}
+        {booking.payment && (
+          <div className="card mb-6 p-6">
+            <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-on-surface">
+              <CreditCard size={20} weight="light" className="text-gold-deep" aria-hidden />
+              {t.booking.payment}
+            </h2>
+            <dl className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <dt className="text-on-surface-muted">{locale === "ar" ? "المبلغ" : "Amount"}</dt>
+                <dd className="font-semibold text-on-surface" style={{ fontVariantNumeric: "tabular-nums" }}>{booking.payment.amount} {booking.payment.currency}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-on-surface-muted">{locale === "ar" ? "الحالة" : "Status"}</dt>
+                <dd className="font-semibold text-primary">{booking.payment.status}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
 
-        <Button type="submit" size="lg" disabled={loading}>
-          {loading ? "..." : t.booking.confirmBooking}
-        </Button>
-      </form>
-    </main>
+        {/* Total */}
+        <div className="card mb-6 p-6">
+          <div className="flex items-center justify-between">
+            <span className="font-display text-lg font-bold text-on-surface">{t.booking.total}</span>
+            <span className="font-display text-2xl font-bold text-primary-hover" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {booking.totalPrice} {currency}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-3">
+          <Link href="/bookings" className="btn btn-secondary">
+            <ArrowRight size={16} weight="bold" className="rtl:rotate-180" aria-hidden />
+            {t.guestAccount.backToBookings}
+          </Link>
+          {canCancel && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!confirm(t.booking.cancelConfirm)) return;
+                await fetch(`/api/bookings/${booking.id}/cancel`, { method: "PATCH" });
+                window.location.reload();
+              }}
+            >
+              {t.booking.cancel}
+            </Button>
+          )}
+        </div>
+      </main>
   );
 }

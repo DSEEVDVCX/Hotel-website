@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { reportsQuerySchema } from "@/lib/schemas/admin-reports";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -11,53 +13,114 @@ export async function GET(req: NextRequest) {
   const startDate = req.nextUrl.searchParams.get("startDate");
   const endDate = req.nextUrl.searchParams.get("endDate");
 
-  const where = {
-    createdAt: {
-      ...(startDate ? { gte: new Date(startDate) } : {}),
-      ...(endDate ? { lte: new Date(endDate) } : {}),
-    },
+  const createdAt: { gte?: Date; lte?: Date } = {};
+  if (startDate && endDate) {
+    const parsed = reportsQuerySchema.safeParse({ startDate, endDate });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid date range", details: parsed.error.flatten() },
+        { status: 422 }
+      );
+    }
+    createdAt.gte = new Date(parsed.data.startDate);
+    createdAt.lte = new Date(parsed.data.endDate);
+  } else if (startDate) {
+    createdAt.gte = new Date(startDate);
+  } else if (endDate) {
+    createdAt.lte = new Date(endDate);
+  }
+
+  const hasRange = Boolean(startDate) || Boolean(endDate);
+  const where = hasRange ? { createdAt } : {};
+  const revenueWhere = {
+    ...where,
+    status: { notIn: [BookingStatus.CANCELLED, BookingStatus.FAILED] },
   };
 
-  const [bookings, completedBookings, cancelledBookings, payments, payouts] = await Promise.all([
+  const [
+    bookingCount,
+    cancelledCount,
+    revenueAgg,
+    allGroups,
+    cancelledGroups,
+    revenueGroups,
+  ] = await Promise.all([
     prisma.booking.count({ where }),
-    prisma.booking.count({ where: { ...where, status: "COMPLETED" } }),
     prisma.booking.count({ where: { ...where, status: "CANCELLED" } }),
-    prisma.payment.findMany({ where: { status: "CAPTURED" }, select: { amount: true } }),
-    prisma.payout.findMany({ where: { status: "PAID" }, select: { amount: true } }),
+    prisma.booking.aggregate({
+      where: revenueWhere,
+      _sum: { totalPrice: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["hotelId"],
+      where,
+      _count: { _all: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["hotelId"],
+      where: { ...where, status: "CANCELLED" },
+      _count: { _all: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["hotelId"],
+      where: revenueWhere,
+      _sum: { totalPrice: true },
+    }),
   ]);
 
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount.toNumber(), 0);
-  const totalPayouts = payouts.reduce((sum, p) => sum + p.amount.toNumber(), 0);
-  const cancellationRate = bookings > 0 ? cancelledBookings / bookings : 0;
-  const averageBookingValue = bookings > 0 ? totalRevenue / bookings : 0;
+  const revenue = revenueAgg._sum?.totalPrice
+    ? revenueAgg._sum.totalPrice.toNumber()
+    : 0;
+  const cancellationRate =
+    bookingCount > 0
+      ? Math.round((cancelledCount / bookingCount) * 100) / 100
+      : 0;
+  const disputeCount = 0;
 
-  const byHotel = await prisma.hotel.findMany({
-    where: { bookings: { some: where } },
-    include: {
-      _count: { select: { bookings: true } },
-      bookings: { where: { status: "CANCELLED" }, select: { id: true } },
-    },
+  const hotelIds = allGroups.map((g) => g.hotelId);
+  const hotels =
+    hotelIds.length > 0
+      ? await prisma.hotel.findMany({
+          where: { id: { in: hotelIds } },
+          select: { id: true, nameAr: true, nameEn: true },
+        })
+      : [];
+
+  const hotelMap = new Map(hotels.map((h) => [h.id, h]));
+  const cancelledMap = new Map(
+    cancelledGroups.map((g) => [g.hotelId, g._count._all])
+  );
+  const revenueMap = new Map(
+    revenueGroups.map((g) => [
+      g.hotelId,
+      g._sum?.totalPrice ? g._sum.totalPrice.toNumber() : 0,
+    ])
+  );
+
+  const byHotel = allGroups.map((g) => {
+    const hotel = hotelMap.get(g.hotelId);
+    const count = g._count._all;
+    const cancelled = cancelledMap.get(g.hotelId) ?? 0;
+    const hotelRevenue = revenueMap.get(g.hotelId) ?? 0;
+    const hotelCancellationRate =
+      count > 0 ? Math.round((cancelled / count) * 100) / 100 : 0;
+    return {
+      hotelId: g.hotelId,
+      hotelNameAr: hotel?.nameAr ?? "",
+      hotelNameEn: hotel?.nameEn ?? "",
+      bookingCount: count,
+      revenue: hotelRevenue,
+      cancellationRate: hotelCancellationRate,
+    };
   });
 
-  const hotelStats = byHotel.map((h) => ({
-    hotelId: h.id,
-    hotelNameAr: h.nameAr,
-    hotelNameEn: h.nameEn,
-    bookings: h._count.bookings,
-    cancellations: h.bookings.length,
-  }));
-
   return NextResponse.json({
-    period: { startDate, endDate },
-    metrics: {
-      totalBookings: bookings,
-      totalRevenue,
-      currency: "SAR",
-      cancellationRate: Math.round(cancellationRate * 100) / 100,
-      averageBookingValue: Math.round(averageBookingValue * 100) / 100,
-      completedStays: completedBookings,
-      totalPayouts,
+    kpi: {
+      bookingCount,
+      revenue,
+      cancellationRate,
+      disputeCount,
     },
-    byHotel: hotelStats,
+    byHotel,
   });
 }

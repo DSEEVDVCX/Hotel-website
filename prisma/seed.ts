@@ -9,7 +9,6 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const adminPassword = await hashPassword("admin1234");
-  const hotelierPassword = await hashPassword("hotelier1234");
   const guestPassword = await hashPassword("guest1234");
 
   const admin = await prisma.user.upsert({
@@ -20,18 +19,6 @@ async function main() {
       passwordHash: adminPassword,
       name: "Platform Admin",
       role: "ADMIN",
-    },
-  });
-
-  const hotelier = await prisma.user.upsert({
-    where: { email: "hotelier@suweraldhahab.sa" },
-    update: {},
-    create: {
-      email: "hotelier@suweraldhahab.sa",
-      passwordHash: hotelierPassword,
-      name: "خالد العتيبي",
-      role: "HOTELIER",
-      phoneNumber: "+966555000111",
     },
   });
 
@@ -49,10 +36,12 @@ async function main() {
 
   const hotel = await prisma.hotel.upsert({
     where: { id: "seed-hotel-1" },
-    update: {},
+    update: {
+      photos: ["/images/hero.jpeg", "/images/dest-1.jpeg", "/images/dest-2.jpeg", "/images/dest-3.jpeg"],
+    },
     create: {
       id: "seed-hotel-1",
-      hotelierId: hotelier.id,
+      ownerId: admin.id,
       nameAr: "فندق الرياض الذهبي",
       nameEn: "Riyadh Golden Hotel",
       descriptionAr: "فندق فاخر في قلب الرياض",
@@ -61,7 +50,7 @@ async function main() {
       address: "شارع الملك فهد، الرياض",
       starRating: 5,
       amenities: ["wifi", "pool", "spa", "gym"],
-      photos: ["/page01_img01.jpeg", "/page02_img01.jpeg"],
+      photos: ["/images/hero.jpeg", "/images/dest-1.jpeg", "/images/dest-2.jpeg", "/images/dest-3.jpeg"],
       status: "ACTIVE",
       cancellationPolicyHours: 48,
       checkInTime: "15:00",
@@ -71,7 +60,9 @@ async function main() {
 
   const deluxeRoomType = await prisma.roomType.upsert({
     where: { id: "seed-roomtype-deluxe" },
-    update: {},
+    update: {
+      photos: ["/images/dest-4.jpeg"],
+    },
     create: {
       id: "seed-roomtype-deluxe",
       hotelId: hotel.id,
@@ -83,13 +74,15 @@ async function main() {
       bedType: "king",
       basePrice: 450,
       amenities: ["wifi", "ac", "tv", "minibar"],
-      photos: ["/page03_img01.jpeg"],
+      photos: ["/images/dest-4.jpeg"],
     },
   });
 
   const familyRoomType = await prisma.roomType.upsert({
     where: { id: "seed-roomtype-family" },
-    update: {},
+    update: {
+      photos: ["/images/dest-5.jpeg"],
+    },
     create: {
       id: "seed-roomtype-family",
       hotelId: hotel.id,
@@ -101,7 +94,7 @@ async function main() {
       bedType: "twin",
       basePrice: 650,
       amenities: ["wifi", "ac", "tv", "minibar", "kitchenette"],
-      photos: ["/page04_img01.jpeg"],
+      photos: ["/images/dest-5.jpeg"],
     },
   });
 
@@ -174,7 +167,6 @@ async function main() {
 
   console.log("Seed data created successfully");
   console.log(`  Admin: ${admin.email}`);
-  console.log(`  Hotelier: ${hotelier.email}`);
   console.log(`  Guest: ${guest.email}`);
   console.log(`  Hotel: ${hotel.nameEn} (${hotel.nameAr})`);
 }

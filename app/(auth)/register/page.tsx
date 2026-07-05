@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useLanguage } from "@/app/providers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,7 +13,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"GUEST" | "HOTELIER">("GUEST");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +24,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role }),
+      body: JSON.stringify({ email, password, name, role: "GUEST" }),
     });
 
     if (!res.ok) {
@@ -38,29 +38,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-[var(--color-text)]">{t.auth.registerTitle}</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Input label={t.auth.name} value={name} onChange={(e) => setName(e.target.value)} required />
-        <Input label={t.auth.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <Input label={t.auth.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-[var(--color-text)]">{t.auth.role}</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as "GUEST" | "HOTELIER")}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
-          >
-            <option value="GUEST">{t.auth.guest}</option>
-            <option value="HOTELIER">{t.auth.hotelier}</option>
-          </select>
-        </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        <Button type="submit" disabled={loading}>{loading ? "..." : t.auth.registerBtn}</Button>
+    <main className="mx-auto flex min-h-[80vh] max-w-md flex-col justify-center px-5 py-12">
+      <div className="mb-8 text-center">
+        <h1 className="display-sm font-display text-primary">{t.auth.registerTitle}</h1>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input label={t.auth.name} value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+        <Input label={t.auth.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+        <Input label={t.auth.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
+        {error && <p className="text-sm text-error" role="alert">{error}</p>}
+        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "..." : t.auth.registerBtn}</Button>
       </form>
-      <p className="mt-4 text-sm text-[var(--color-text-muted)]">
+      <p className="mt-6 text-center text-sm text-on-surface-muted">
         {t.auth.haveAccount}{" "}
-        <a href="/login" className="text-[var(--color-accent)] underline">{t.auth.loginLink}</a>
+        <Link href="/login" className="link-underline font-semibold text-primary-hover">{t.auth.loginLink}</Link>
       </p>
     </main>
   );

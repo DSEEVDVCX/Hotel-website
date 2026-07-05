@@ -10,7 +10,6 @@ datasource db {
 
 enum UserRole {
   GUEST
-  HOTELIER
   ADMIN
 }
 
@@ -48,6 +47,11 @@ enum PayoutStatus {
   PAID
 }
 
+enum MediaOwner {
+  HOTEL
+  ROOM_TYPE
+}
+
 // ===== Entities =====
 
 model User {
@@ -65,11 +69,14 @@ model User {
   reviews  Review[]
   hotels  Hotel[]
   payouts Payout[]
+  favorites       Favorite[]
+  uploadedMedia   MediaAsset[]
+  curatedFeatured FeaturedSelection[]
 }
 
 model Hotel {
   id                     String       @id @default(cuid())
-  hotelierId             String
+  ownerId                String
   nameAr                 String
   nameEn                 String
   descriptionAr          String
@@ -88,11 +95,13 @@ model Hotel {
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 
-  hotelier  User       @relation(fields: [hotelierId], references: [id])
+  owner  User       @relation(fields: [ownerId], references: [id])
   roomTypes RoomType[]
   rooms     Room[]
   bookings  Booking[]
   reviews   Review[]
+  featuredSelection FeaturedSelection?
+  favoritedBy       Favorite[]
 
   @@index([city])
   @@index([status])
@@ -204,6 +213,12 @@ model RoomReservation {
   checkOut         DateTime @db.Date
   createdAt        DateTime @default(now())
 
+  // DB-only column (populated by a trigger) backing the RoomReservation_no_overlap
+  // GiST exclusion constraint that prevents double-booking. Prisma cannot model
+  // `daterange`/exclusion constraints, so it is declared Unsupported to stop
+  // `migrate dev` from proposing to drop it. DO NOT remove — see the init migration.
+  stayRange        Unsupported("daterange")?
+
   bookingLineItem BookingLineItem @relation(fields: [bookingLineItemId], references: [id], onDelete: Cascade)
   room            Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
@@ -231,7 +246,7 @@ model Payment {
 
 model Payout {
   id          String        @id @default(cuid())
-  hotelierId  String
+  ownerId     String
   bookingId   String
   amount      Decimal       @db.Decimal(10, 2)
   status      PayoutStatus  @default(PENDING)
@@ -239,16 +254,16 @@ model Payout {
   paidAt      DateTime?
   createdAt   DateTime      @default(now())
 
-  hotelier User    @relation(fields: [hotelierId], references: [id])
+  owner  User    @relation(fields: [ownerId], references: [id])
   booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  @@index([hotelierId])
+  @@index([ownerId])
   @@index([status])
 }
 
 model Review {
   id         String   @id @default(cuid())
-  bookingId  String   @unique
+  bookingId  String?  @unique
   guestId    String
   hotelId    String
   rating     Int
@@ -256,9 +271,55 @@ model Review {
   commentEn  String?
   createdAt  DateTime @default(now())
 
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   guest   User    @relation(fields: [guestId], references: [id])
   hotel   Hotel   @relation(fields: [hotelId], references: [id])
 
+  @@unique([guestId, hotelId])
+  @@index([hotelId])
+}
+
+model MediaAsset {
+  id         String      @id @default(cuid())
+  ownerType  MediaOwner  @default(HOTEL)
+  ownerId    String
+  url        String
+  sortOrder  Int         @default(0)
+  captionAr  String?
+  captionEn  String?
+  uploadedBy String
+  createdAt  DateTime    @default(now())
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@index([ownerType, ownerId])
+  @@index([ownerId])
+}
+
+model FeaturedSelection {
+  id         String   @id @default(cuid())
+  hotelId    String   @unique
+  sortOrder  Int      @default(0)
+  curatedBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hotel     Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  curator   User  @relation(fields: [curatedBy], references: [id])
+
+  @@index([sortOrder])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  guestId   String
+  hotelId   String
+  createdAt DateTime @default(now())
+
+  guest User  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, hotelId])
+  @@index([guestId])
   @@index([hotelId])
 }

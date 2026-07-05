@@ -11,9 +11,21 @@ export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get("status");
   const hotels = await prisma.hotel.findMany({
     where: status ? { status: status as never } : {},
-    include: { hotelier: { select: { name: true } } },
+    include: {
+      owner: { select: { name: true } },
+      featuredSelection: { select: { sortOrder: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ hotels });
+  const hotelsWithFeatured = hotels.map((h) => {
+    const { featuredSelection, ...rest } = h;
+    return {
+      ...rest,
+      isFeatured: featuredSelection !== null,
+      featuredSortOrder: featuredSelection ? featuredSelection.sortOrder : null,
+    };
+  });
+
+  return NextResponse.json({ hotels: hotelsWithFeatured });
 }

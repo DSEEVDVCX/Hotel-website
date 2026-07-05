@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { writeUser } from "@/lib/firebase";
 import { registerSchema } from "@/lib/schemas/auth";
 
 export async function POST(req: NextRequest) {
@@ -20,8 +21,15 @@ export async function POST(req: NextRequest) {
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
     data: { email, passwordHash, name, role },
-    select: { id: true, email: true, name: true, role: true },
+    select: { id: true, email: true, name: true, role: true, status: true, createdAt: true },
   });
 
-  return NextResponse.json(user, { status: 201 });
+  // Durable copy to Firebase (best-effort). The bcrypt hash is included so auth
+  // can read from Firebase once accounts are backfilled — never plaintext.
+  await writeUser({ ...user, passwordHash });
+
+  return NextResponse.json(
+    { id: user.id, email: user.email, name: user.name, role: user.role },
+    { status: 201 }
+  );
 }

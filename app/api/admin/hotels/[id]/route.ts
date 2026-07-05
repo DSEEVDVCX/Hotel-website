@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { syncHotelToFirebase } from "@/lib/room-types";
 import { z } from "zod";
 
 const actionSchema = z.object({
@@ -35,6 +37,13 @@ export async function PATCH(
     where: { id },
     data: { status: statusMap[result.data.action] },
   });
+
+  // A hotel status change flips public visibility of all its room types.
+  // Re-denormalize to Firebase and refresh the ISR-cached public pages.
+  await syncHotelToFirebase(id);
+  revalidatePath("/");
+  revalidatePath("/rooms");
+  revalidatePath("/search");
 
   return NextResponse.json(updated);
 }

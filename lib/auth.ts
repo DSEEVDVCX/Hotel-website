@@ -1,15 +1,11 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
+import { authConfig } from "@/lib/auth.config";
 import type { UserRole } from "@prisma/client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -21,12 +17,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
 
+        const { verifyPassword } = await import("@/lib/password");
+
+        // Prefer Firebase (once backfilled it is the account of record); fall
+        // back to Postgres when Firebase is disabled or has no such user.
+        // Imported dynamically so firebase-admin never enters the edge/middleware bundle.
+        const { getUserByEmail } = await import("@/lib/firebase");
+        const fbUser = await getUserByEmail(email);
+        if (fbUser && fbUser.passwordHash) {
+          if (fbUser.status === "SUSPENDED") return null;
+          const valid = await verifyPassword(password, fbUser.passwordHash);
+          if (!valid) return null;
+          return {
+            id: fbUser.id,
+            email: fbUser.email,
+            name: fbUser.name,
+            role: fbUser.role as UserRole,
+          };
+        }
+
         const user = await prisma.user.findUnique({
           where: { email },
         });
         if (!user || user.status === "SUSPENDED") return null;
 
-        const { verifyPassword } = await import("@/lib/password");
         const valid = await verifyPassword(password, user.passwordHash);
         if (!valid) return null;
 
@@ -39,22 +53,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as { role: UserRole }).role;
-        token.id = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        (session.user as { role?: UserRole }).role = token.role as UserRole;
-        (session.user as { id?: string }).id = token.id as string;
-      }
-      return session;
-    },
-  },
 });
 
 export type SessionUser = {

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useLanguage } from "@/app/providers";
-import { AuthNav } from "@/components/auth/AuthNav";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ReportsDashboard } from "@/components/admin/reports-dashboard";
 
 export default function AdminPage() {
   const { data: session } = useSession();
@@ -40,22 +40,28 @@ export default function AdminPage() {
   if (role !== "ADMIN") return <EmptyState />;
 
   return (
-    <>
-      <AuthNav role="ADMIN" />
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="mb-6 text-2xl font-bold text-[var(--color-text)]">{t.admin.title}</h1>
-        <h2 className="mb-4 text-lg font-semibold">{t.admin.hotels}</h2>
+    <main className="mx-auto max-w-4xl px-4 py-8">
+      <h1 className="mb-6 text-2xl font-bold text-on-surface font-display">{t.admin.title}</h1>
+
+      <section className="mb-10 rounded-2xl border border-border bg-surface-muted p-5">
+        <ReportsDashboard />
+      </section>
+
+      <section>
+        <h2 className="mb-4 text-lg font-semibold text-on-surface">{t.admin.hotels}</h2>
         {loading ? (
-          <p className="text-[var(--color-text-muted)]">...</p>
+          <p className="text-on-surface-muted">...</p>
         ) : hotels.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="flex flex-col gap-3">
             {hotels.map((h) => (
-              <div key={h.id} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] p-4">
+              <div key={h.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-raised p-4">
                 <div>
-                  <p className="font-medium">{locale === "ar" ? h.nameAr : h.nameEn}</p>
-                  <p className="text-sm text-[var(--color-text-muted)]">{h.hotelier?.name} · {h.status}</p>
+                  <p className="font-medium text-on-surface">{locale === "ar" ? h.nameAr : h.nameEn}</p>
+                  <p className="text-sm text-on-surface-muted">
+                    {h.owner?.name} · {h.status}{h.isFeatured ? " · ★" : ""}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   {h.status === "PENDING" && (
@@ -72,7 +78,7 @@ export default function AdminPage() {
             ))}
           </div>
         )}
-      </main>
-    </>
+      </section>
+    </main>
   );
 }

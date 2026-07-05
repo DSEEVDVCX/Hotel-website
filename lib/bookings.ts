@@ -25,7 +25,7 @@ export async function createBooking(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const hotel = await tx.hotel.findUniqueOrThrow({
+      await tx.hotel.findUniqueOrThrow({
         where: { id: data.hotelId, status: "ACTIVE" },
       });
 
