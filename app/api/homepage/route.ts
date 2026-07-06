@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getFeaturedProperties } from "@/lib/featured";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limitParam = searchParams.get("limit");

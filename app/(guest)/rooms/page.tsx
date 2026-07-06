@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "تصفّح جميع الغرف والأجنحة الفاخرة المتاحة في سوار الأندلس واختر إقامتك المثالية. Browse every luxury room and suite available at Sewar AlAndalus.",
 };
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function RoomsPage() {
   const rooms = await getAllRoomTypes();
