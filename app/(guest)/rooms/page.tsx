@@ -17,7 +17,7 @@ export default async function RoomsPage() {
   return (
     <>
       <main id="main" className="overflow-x-hidden w-full max-w-full pt-20">
-        <RoomsGrid rooms={rooms} />
+        <RoomsGrid rooms={rooms} showFilters />
       </main>
       <SiteFooter />
     </>

@@ -6,23 +6,51 @@ import { motion, useScroll, useTransform } from "motion/react";
 import { Star, Users, Bed, ArrowRight } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
 import type { RoomTypeSummary } from "@/lib/room-types";
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 export default function RoomsGrid({
   rooms,
   viewAllHref,
+  showFilters = false,
 }: {
   rooms: RoomTypeSummary[];
   /** When set, a "view all" CTA is shown below the grid linking here. */
   viewAllHref?: string;
+  showFilters?: boolean;
 }) {
   const { t, locale } = useLanguage();
   const currency = locale === "ar" ? "ر.س" : "SAR";
   const guestsLabel = locale === "ar" ? "ضيوف" : "guests";
+  const [cityFilter, setCityFilter] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const sectionRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start end", "end start"] });
   const headingY = useTransform(scrollYProgress, [0, 0.3], [40, 0]);
   const headingOpacity = useTransform(scrollYProgress, [0, 0.2], [0, 1]);
+  const cities = useMemo(() => Array.from(new Set(rooms.map((room) => room.city).filter(Boolean))).sort(), [rooms]);
+  const filteredRooms = useMemo(() => {
+    const min = minPrice === "" ? null : Number(minPrice);
+    const max = maxPrice === "" ? null : Number(maxPrice);
+    const minCapacity = capacity === "" ? null : Number(capacity);
+
+    const filtered = rooms.filter((room) => {
+      if (cityFilter && room.city !== cityFilter) return false;
+      if (min !== null && room.basePrice > 0 && room.basePrice < min) return false;
+      if (max !== null && room.basePrice > 0 && room.basePrice > max) return false;
+      if (minCapacity !== null && room.capacity > 0 && room.capacity < minCapacity) return false;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "priceLow") return (a.basePrice || Number.MAX_SAFE_INTEGER) - (b.basePrice || Number.MAX_SAFE_INTEGER);
+      if (sortBy === "priceHigh") return b.basePrice - a.basePrice;
+      return 0;
+    });
+  }, [rooms, cityFilter, minPrice, maxPrice, capacity, sortBy]);
+  const visibleRooms = showFilters ? filteredRooms : rooms;
 
   return (
     <section id="rooms" ref={sectionRef} className="scroll-mt-24 pattern-bg section-pad">
@@ -37,14 +65,66 @@ export default function RoomsGrid({
           </p>
         </motion.div>
 
-        {rooms.length === 0 ? (
+        {showFilters && rooms.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55, ease: [0.2, 0, 0, 1] }}
+            className="mb-10 rounded-[2rem] border border-gold/20 bg-surface-raised/90 p-2 shadow-sm"
+          >
+            <div className="rounded-[calc(2rem-0.5rem)] border border-border bg-surface p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)]">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="font-display text-xl font-bold text-primary">{t.search.filters}</h3>
+                <button
+                  type="button"
+                  onClick={() => { setCityFilter(""); setMinPrice(""); setMaxPrice(""); setCapacity(""); setSortBy("newest"); }}
+                  className="link-underline text-sm font-semibold text-primary-hover"
+                >
+                  {t.search.clearFilters}
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div>
+                  <label className="field-label">{t.search.destination}</label>
+                  <select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} className="field">
+                    <option value="">{t.search.allCities}</option>
+                    {cities.map((city) => <option key={city} value={city}>{city}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">{t.search.minPrice}</label>
+                  <input value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="field" type="number" min="0" inputMode="numeric" />
+                </div>
+                <div>
+                  <label className="field-label">{t.search.maxPrice}</label>
+                  <input value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="field" type="number" min="0" inputMode="numeric" />
+                </div>
+                <div>
+                  <label className="field-label">{t.search.capacity}</label>
+                  <input value={capacity} onChange={(e) => setCapacity(e.target.value)} className="field" type="number" min="1" inputMode="numeric" placeholder={t.search.anyCapacity} />
+                </div>
+                <div>
+                  <label className="field-label">{t.search.sortBy}</label>
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="field">
+                    <option value="newest">{t.search.newest}</option>
+                    <option value="priceLow">{t.search.priceLow}</option>
+                    <option value="priceHigh">{t.search.priceHigh}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {visibleRooms.length === 0 ? (
           <div className="rounded-2xl border border-border bg-surface-muted p-12 text-center">
             <p className="text-on-surface-muted">{t.hotelHome.noFeatured}</p>
           </div>
         ) : (
           /* Gapless bento — grid-flow-dense prevents voids */
           <div className="grid grid-flow-dense grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[380px]">
-            {rooms.map((room, i) => {
+            {visibleRooms.map((room, i) => {
               const isLarge = i === 0;
               return (
                 <motion.div
@@ -128,7 +208,7 @@ export default function RoomsGrid({
           </div>
         )}
 
-        {viewAllHref && rooms.length > 0 && (
+        {viewAllHref && visibleRooms.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
