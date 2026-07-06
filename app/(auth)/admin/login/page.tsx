@@ -34,6 +34,7 @@ function AdminLoginForm() {
       email,
       password,
       redirect: false,
+      callbackUrl,
     });
 
     if (result?.error) {

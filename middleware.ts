@@ -22,6 +22,13 @@ export default auth((req) => {
   const isLoggedIn = !!session?.user;
   const userRole = (session?.user as { role?: string } | undefined)?.role;
 
+  if (pathname.startsWith("/admin/login")) {
+    if (isLoggedIn && userRole === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin", nextUrl));
+    }
+    return NextResponse.next();
+  }
+
   if (authRoutes.some((route) => pathname.startsWith(route))) {
     if (isLoggedIn) {
       const home = userRole === "ADMIN" ? "/admin" : "/account";
@@ -40,7 +47,8 @@ export default auth((req) => {
         return NextResponse.redirect(loginUrl);
       }
       if (!userRole || !allowedRoles.includes(userRole)) {
-        return NextResponse.redirect(new URL("/", nextUrl));
+        const redirectPath = prefix === "/admin" ? "/admin/login" : "/";
+        return NextResponse.redirect(new URL(redirectPath, nextUrl));
       }
     }
   }
