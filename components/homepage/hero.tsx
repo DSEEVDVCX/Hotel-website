@@ -5,6 +5,7 @@ import { ArrowDown } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
 import { useRef } from "react";
 import GenerativeHeroBackground from "./generative-hero";
+import { SearchBar } from "@/components/search/SearchBar";
 
 export default function HotelHero() {
   const { t, locale } = useLanguage();
@@ -86,8 +87,11 @@ export default function HotelHero() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.7, ease: [0.2, 0, 0, 1] }}
-          className="mt-8"
+          className="mt-8 flex flex-col items-center gap-5"
         >
+          <div className="w-full max-w-5xl rounded-2xl border border-white/15 bg-surface-raised/95 p-4 text-start shadow-xl backdrop-blur-md">
+            <SearchBar />
+          </div>
           <button onClick={() => scrollTo("rooms")} className="btn btn-primary text-base">
             {locale === "ar" ? "تصفّح الغرف والأجنحة" : "Browse Rooms & Suites"}
             <ArrowDown size={16} weight="bold" aria-hidden />

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { requirePlatformAdmin } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { createFeaturedSchema } from "@/lib/schemas/featured";
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err instanceof PrismaClientKnownRequestError &&
       err.code === "P2002"
     ) {
       return NextResponse.json(

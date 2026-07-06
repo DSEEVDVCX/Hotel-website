@@ -4,16 +4,18 @@ test.describe("Homepage", () => {
   test("loads with hero search and featured properties", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.locator("form")).toBeVisible();
-    await expect(page.locator('input[placeholder], input[type="text"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    const searchForm = page.getByRole("form", { name: /ابحث عن غرفة|Search/ });
+    await expect(searchForm).toBeVisible();
+    await expect(searchForm.locator('input[placeholder], input[type="text"]')).toBeVisible();
+    await expect(searchForm.locator('button[type="submit"]')).toBeVisible();
   });
 
   test("search form navigates to /search", async ({ page }) => {
     await page.goto("/");
 
-    await page.locator('input[type="text"]').fill("Riyadh");
-    await page.locator('button[type="submit"]').click();
+    const searchForm = page.getByRole("form", { name: /ابحث عن غرفة|Search/ });
+    await searchForm.locator('input[type="text"]').fill("Riyadh");
+    await searchForm.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL(/\/search/);
   });
@@ -25,7 +27,7 @@ test.describe("Homepage", () => {
     const count = await cards.count();
     if (count > 0) {
       await expect(cards.first()).toBeVisible();
-      await expect(cards.first()).toContainText(/SAR|ريال/);
+      await expect(cards.first()).toContainText(/SAR|ر\.س|ريال/);
     }
   });
 

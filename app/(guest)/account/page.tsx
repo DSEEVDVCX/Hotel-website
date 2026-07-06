@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/app/providers";
 import { useSession } from "next-auth/react";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -30,11 +31,22 @@ const tabs: { id: Tab; labelKey: keyof import("@/lib/content").Content["guestAcc
   { id: "favorites", labelKey: "favorites", icon: <Heart size={16} weight="light" aria-hidden /> },
 ];
 
-export default function AccountPage() {
+function AccountContent() {
   const { t } = useLanguage();
   const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const role = (session?.user as { role?: string })?.role;
-  const [active, setActive] = useState<Tab>("overview");
+  const tabParam = searchParams.get("tab") as Tab | null;
+  const initialTab = tabs.some((tab) => tab.id === tabParam) ? tabParam! : "overview";
+  const [active, setActive] = useState<Tab>(initialTab);
+
+  const selectTab = (tab: Tab) => {
+    setActive(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.replace(`/account?${params.toString()}`, { scroll: false });
+  };
 
   if (role !== "GUEST") return <EmptyState />;
 
@@ -48,13 +60,18 @@ export default function AccountPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-8 flex gap-1 overflow-x-auto border-b border-border">
+      <div className="mb-8 flex gap-1 overflow-x-auto border-b border-border" role="tablist" aria-label={t.guestAccount.dashboard}>
         {tabs.map((tab) => {
           const isActive = active === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setActive(tab.id)}
+              id={`account-tab-${tab.id}`}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`account-panel-${tab.id}`}
+              onClick={() => selectTab(tab.id)}
               className={`inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                 isActive
                   ? "border-gold text-on-surface"
@@ -69,7 +86,7 @@ export default function AccountPage() {
       </div>
 
       {/* Tab content */}
-      <div className="grid gap-6">
+      <div id={`account-panel-${active}`} role="tabpanel" aria-labelledby={`account-tab-${active}`} className="grid gap-6">
         {active === "overview" && <AccountOverview />}
         {active === "profile" && <ProfileForm />}
         {active === "security" && <PasswordForm />}
@@ -78,5 +95,13 @@ export default function AccountPage() {
         {active === "favorites" && <FavoritesList />}
       </div>
     </main>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-5xl px-5 py-12 md:py-16 lg:px-8" />}>
+      <AccountContent />
+    </Suspense>
   );
 }

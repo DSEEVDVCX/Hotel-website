@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin, validationError } from "@/lib/admin-auth";
+import { parsePositiveInt, parsePositiveNumber } from "@/lib/validation";
 import { syncRoomTypeToFirebase, removeRoomTypeFromFirebase } from "@/lib/room-types";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
   const body = await req.json();
@@ -26,25 +19,29 @@ export async function PATCH(
     where: { id },
     include: { hotel: true },
   });
-  if (!roomType || roomType.hotel.ownerId !== userId) {
+  if (!roomType || roomType.hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Room type not found" }, { status: 404 });
   }
 
-  const updateData: Record<string, unknown> = {};
-  if (body.nameAr !== undefined) updateData.nameAr = body.nameAr;
-  if (body.nameEn !== undefined) updateData.nameEn = body.nameEn;
-  if (body.descriptionAr !== undefined) updateData.descriptionAr = body.descriptionAr;
-  if (body.descriptionEn !== undefined) updateData.descriptionEn = body.descriptionEn;
-  if (body.capacity !== undefined) updateData.capacity = Number(body.capacity);
-  if (body.bedType !== undefined) updateData.bedType = body.bedType;
-  if (body.basePrice !== undefined) updateData.basePrice = Number(body.basePrice);
-  if (body.amenities !== undefined) updateData.amenities = body.amenities;
-  if (body.photos !== undefined) updateData.photos = body.photos;
+  let updateData: Record<string, unknown>;
+  try {
+    updateData = {};
+    if (body.nameAr !== undefined) updateData.nameAr = body.nameAr;
+    if (body.nameEn !== undefined) updateData.nameEn = body.nameEn;
+    if (body.descriptionAr !== undefined) updateData.descriptionAr = body.descriptionAr;
+    if (body.descriptionEn !== undefined) updateData.descriptionEn = body.descriptionEn;
+    if (body.capacity !== undefined) updateData.capacity = parsePositiveInt(body.capacity, "capacity");
+    if (body.bedType !== undefined) updateData.bedType = body.bedType;
+    if (body.basePrice !== undefined) updateData.basePrice = parsePositiveNumber(body.basePrice, "basePrice");
+    if (body.amenities !== undefined) updateData.amenities = body.amenities;
+    if (body.photos !== undefined) updateData.photos = body.photos;
+  } catch (error) {
+    const invalid = validationError(error);
+    if (invalid) return invalid;
+    throw error;
+  }
 
-  const updated = await prisma.roomType.update({
-    where: { id },
-    data: updateData,
-  });
+  const updated = await prisma.roomType.update({ where: { id }, data: updateData });
 
   // Refresh the ISR-cached public pages that render this room type.
   revalidatePath("/");
@@ -62,16 +59,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
 
@@ -82,7 +71,7 @@ export async function DELETE(
       _count: { select: { bookingItems: true } },
     },
   });
-  if (!roomType || roomType.hotel.ownerId !== userId) {
+  if (!roomType || roomType.hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Room type not found" }, { status: 404 });
   }
 

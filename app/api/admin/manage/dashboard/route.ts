@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin } from "@/lib/admin-auth";
 import { dashboardQuerySchema } from "@/lib/schemas/dashboard";
 import {
   computeHotelKPIs,
@@ -10,16 +10,8 @@ import {
 } from "@/lib/dashboard-metrics";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const parsed = dashboardQuerySchema.safeParse({
     hotelId: req.nextUrl.searchParams.get("hotelId") ?? "",
@@ -40,7 +32,7 @@ export async function GET(req: NextRequest) {
     where: { id: hotelId },
     select: { ownerId: true },
   });
-  if (!hotel || hotel.ownerId !== userId) {
+  if (!hotel || hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
   }
 

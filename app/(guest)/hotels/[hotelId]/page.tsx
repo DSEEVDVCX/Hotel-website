@@ -34,6 +34,7 @@ function HotelDetailContent({ hotelId }: { hotelId: string }) {
 
   const checkIn = searchParams.get("checkIn") || "";
   const checkOut = searchParams.get("checkOut") || "";
+  const guests = searchParams.get("guests") || "1";
 
   useEffect(() => {
     setError(false);
@@ -162,7 +163,7 @@ function HotelDetailContent({ hotelId }: { hotelId: string }) {
                 if (checkIn && checkOut) {
                   const rt = hotel.roomTypes?.[0];
                   if (rt) {
-                    const params = new URLSearchParams({ hotelId, roomTypeId: rt.id, checkIn, checkOut, quantity: "1" });
+                    const params = new URLSearchParams({ hotelId, roomTypeId: rt.id, checkIn, checkOut, guests, quantity: "1" });
                     router.push(`/booking/checkout?${params.toString()}`);
                   }
                 } else {
@@ -201,7 +202,7 @@ function HotelDetailContent({ hotelId }: { hotelId: string }) {
       {/* Available rooms */}
       <Section>
         <SectionHeading title={t.propertyDetail.availableRooms} />
-        <AvailableRooms roomTypes={hotel.roomTypes ?? []} hotelId={hotelId} checkIn={checkIn} checkOut={checkOut} />
+        <AvailableRooms roomTypes={hotel.roomTypes ?? []} hotelId={hotelId} checkIn={checkIn} checkOut={checkOut} guests={guests} />
       </Section>
 
       {/* Location */}

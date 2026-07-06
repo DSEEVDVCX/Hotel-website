@@ -19,23 +19,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { verifyPassword } = await import("@/lib/password");
 
-        // Prefer Firebase (once backfilled it is the account of record); fall
-        // back to Postgres when Firebase is disabled or has no such user.
-        // Imported dynamically so firebase-admin never enters the edge/middleware bundle.
-        const { getUserByEmail } = await import("@/lib/firebase");
-        const fbUser = await getUserByEmail(email);
-        if (fbUser && fbUser.passwordHash) {
-          if (fbUser.status === "SUSPENDED") return null;
-          const valid = await verifyPassword(password, fbUser.passwordHash);
-          if (!valid) return null;
-          return {
-            id: fbUser.id,
-            email: fbUser.email,
-            name: fbUser.name,
-            role: fbUser.role as UserRole,
-          };
-        }
-
         const user = await prisma.user.findUnique({
           where: { email },
         });

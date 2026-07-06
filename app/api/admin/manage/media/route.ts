@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin } from "@/lib/admin-auth";
 import { createMediaAssetSchema, type MediaOwner } from "@/lib/schemas/media";
 
 /**
@@ -22,16 +22,8 @@ async function resolveOwnerHotelId(
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const ownerType = req.nextUrl.searchParams.get("ownerType") as MediaOwner | null;
   const ownerId = req.nextUrl.searchParams.get("ownerId");
@@ -53,7 +45,7 @@ export async function GET(req: NextRequest) {
     where: { id: hotelId },
     select: { ownerId: true },
   });
-  if (!hotel || hotel.ownerId !== userId) {
+  if (!hotel || hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -66,16 +58,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json();
   const parsed = createMediaAssetSchema.safeParse(body);
@@ -98,7 +82,7 @@ export async function POST(req: NextRequest) {
     where: { id: hotelId },
     select: { ownerId: true },
   });
-  if (!hotel || hotel.ownerId !== userId) {
+  if (!hotel || hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -110,7 +94,7 @@ export async function POST(req: NextRequest) {
       captionAr: captionAr ?? null,
       captionEn: captionEn ?? null,
       sortOrder,
-      uploadedBy: userId,
+      uploadedBy: session.userId,
     },
   });
 

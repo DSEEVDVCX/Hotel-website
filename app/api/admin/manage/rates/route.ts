@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin, validationError } from "@/lib/admin-auth";
+import { parsePositiveNumber } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json();
   const { roomTypeId, startDate, endDate, nightlyPrice, label } = body;
@@ -28,7 +21,7 @@ export async function POST(req: NextRequest) {
     where: { id: roomTypeId },
     include: { hotel: true },
   });
-  if (!roomType || roomType.hotel.ownerId !== userId) {
+  if (!roomType || roomType.hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Room type not found" }, { status: 404 });
   }
 
@@ -56,37 +49,32 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const parsedNightlyPrice = parsePositiveNumber(nightlyPrice, "nightlyPrice");
     const rate = await prisma.rate.create({
       data: {
         roomTypeId,
         startDate: start,
         endDate: end,
-        nightlyPrice: Number(nightlyPrice),
+        nightlyPrice: parsedNightlyPrice,
         label: label ?? null,
       },
     });
 
     return NextResponse.json(rate, { status: 201 });
   } catch (error) {
+    const invalid = validationError(error);
+    if (invalid) return invalid;
     const message = error instanceof Error ? error.message : "Failed to create rate";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function GET(_req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const hotel = await prisma.hotel.findFirst({
-    where: { ownerId: userId },
+    where: { ownerId: session.userId },
     include: { roomTypes: { select: { id: true } } },
   });
   if (!hotel || hotel.roomTypes.length === 0) {

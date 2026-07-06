@@ -39,9 +39,11 @@ export async function capturePayment(
     throw new Error(`Payment intent is not ready to capture (${paymentIntent.status})`);
   }
 
-  return stripe.paymentIntents.capture(paymentIntentId, {
-    idempotencyKey: `capture_${idempotencyKey}`,
-  } as Stripe.PaymentIntentCaptureParams);
+  return stripe.paymentIntents.capture(
+    paymentIntentId,
+    {},
+    { idempotencyKey: `capture_${idempotencyKey}` }
+  );
 }
 
 export async function createRefund(
@@ -56,6 +58,26 @@ export async function createRefund(
     },
     { idempotencyKey: `refund_${idempotencyKey}` }
   );
+}
+
+export async function cancelPaymentIntent(
+  paymentIntentId: string,
+  idempotencyKey: string
+): Promise<Stripe.PaymentIntent | null> {
+  if (!paymentIntentId.startsWith("pi_")) return null;
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (["canceled", "succeeded"].includes(paymentIntent.status)) {
+    return paymentIntent;
+  }
+
+  if (!["requires_payment_method", "requires_confirmation", "requires_action", "processing", "requires_capture"].includes(paymentIntent.status)) {
+    return paymentIntent;
+  }
+
+  return stripe.paymentIntents.cancel(paymentIntentId, undefined, {
+    idempotencyKey: `cancel_${idempotencyKey}`,
+  });
 }
 
 export function verifyWebhookSignature(

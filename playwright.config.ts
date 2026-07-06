@@ -1,4 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "node:fs";
+import { config as loadEnv } from "dotenv";
+
+if (existsSync(".env.test")) {
+  loadEnv({ path: ".env.test" });
+} else {
+  loadEnv();
+}
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -24,6 +32,6 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

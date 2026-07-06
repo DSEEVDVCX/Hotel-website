@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin } from "@/lib/admin-auth";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
   const body = await req.json();
@@ -32,7 +24,7 @@ export async function PATCH(
     where: { id },
     include: { hotel: true },
   });
-  if (!room || room.hotel.ownerId !== userId) {
+  if (!room || room.hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 

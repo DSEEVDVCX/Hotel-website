@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin } from "@/lib/admin-auth";
 import { reorderMediaSchema, type MediaOwner } from "@/lib/schemas/media";
 
 async function resolveOwnerHotelId(
@@ -16,16 +16,8 @@ async function resolveOwnerHotelId(
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json();
   const parsed = reorderMediaSchema.safeParse(body);
@@ -47,7 +39,7 @@ export async function PUT(req: NextRequest) {
     where: { id: hotelId },
     select: { ownerId: true },
   });
-  if (!hotel || hotel.ownerId !== userId) {
+  if (!hotel || hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

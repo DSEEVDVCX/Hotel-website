@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/payments";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       data: { id: event.id, provider: "stripe", eventType: event.type },
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ received: true, duplicate: true });
     }
     throw error;
@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
               capturedAt: new Date(),
             },
           });
-          await tx.booking.update({
-            where: { id: payment.bookingId },
+          await tx.booking.updateMany({
+            where: { id: payment.bookingId, status: "PENDING" },
             data: { status: "CONFIRMED" },
           });
         });
@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
               failureReason: "Payment intent failed",
             },
           });
-          await tx.booking.update({
-            where: { id: payment.bookingId },
+          await tx.booking.updateMany({
+            where: { id: payment.bookingId, status: "PENDING" },
             data: { status: "FAILED" },
           });
           await tx.roomReservation.deleteMany({

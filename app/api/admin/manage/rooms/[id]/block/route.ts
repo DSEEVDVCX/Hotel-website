@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin } from "@/lib/admin-auth";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
   const body = await req.json();
@@ -34,12 +26,36 @@ export async function PATCH(
     );
   }
 
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+    return NextResponse.json(
+      { error: "endDate must be after startDate" },
+      { status: 422 }
+    );
+  }
+
   const room = await prisma.room.findUnique({
     where: { id },
     include: { hotel: true },
   });
-  if (!room || room.hotel.ownerId !== userId) {
+  if (!room || room.hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
+
+  const overlappingReservations = await prisma.roomReservation.count({
+    where: {
+      roomId: id,
+      checkIn: { lt: end },
+      checkOut: { gt: start },
+      bookingLineItem: { booking: { status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] } } },
+    },
+  });
+  if (blocked && overlappingReservations > 0) {
+    return NextResponse.json(
+      { error: "Room has bookings in the requested date range" },
+      { status: 409 }
+    );
   }
 
   const updated = await prisma.room.update({

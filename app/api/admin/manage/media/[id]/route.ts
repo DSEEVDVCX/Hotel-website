@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin } from "@/lib/admin-auth";
 import { updateMediaAssetSchema, type MediaOwner } from "@/lib/schemas/media";
 
 /**
@@ -24,16 +24,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
 
@@ -54,7 +46,7 @@ export async function PATCH(
     where: { id: hotelId },
     select: { ownerId: true },
   });
-  if (!hotel || hotel.ownerId !== userId) {
+  if (!hotel || hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -89,16 +81,8 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const { id } = await params;
 
@@ -118,7 +102,7 @@ export async function DELETE(
     where: { id: hotelId },
     select: { ownerId: true },
   });
-  if (!hotel || hotel.ownerId !== userId) {
+  if (!hotel || hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

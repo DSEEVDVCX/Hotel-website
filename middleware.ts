@@ -36,7 +36,7 @@ export default auth((req) => {
         // Admin area bounces to the admin portal; buyer areas to the buyer login.
         const loginPath = prefix === "/admin" ? "/admin/login" : "/login";
         const loginUrl = new URL(loginPath, nextUrl);
-        loginUrl.searchParams.set("callbackUrl", pathname);
+        loginUrl.searchParams.set("callbackUrl", `${pathname}${nextUrl.search}`);
         return NextResponse.redirect(loginUrl);
       }
       if (!userRole || !allowedRoles.includes(userRole)) {

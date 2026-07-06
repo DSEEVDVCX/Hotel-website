@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireHotelAdmin, validationError } from "@/lib/admin-auth";
+import { parseNonNegativeInt } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json();
   const { roomTypeId, roomNumber, floor } = body;
@@ -28,21 +21,26 @@ export async function POST(req: NextRequest) {
     where: { id: roomTypeId },
     include: { hotel: true },
   });
-  if (!roomType || roomType.hotel.ownerId !== userId) {
+  if (!roomType || roomType.hotel.ownerId !== session.userId) {
     return NextResponse.json({ error: "Room type not found" }, { status: 404 });
   }
 
   try {
+    const parsedFloor = floor !== undefined && floor !== null && floor !== ""
+      ? parseNonNegativeInt(floor, "floor")
+      : null;
     const room = await prisma.room.create({
       data: {
         roomTypeId,
         hotelId: roomType.hotelId,
         roomNumber: String(roomNumber),
-        floor: floor !== undefined && floor !== null ? Number(floor) : null,
+        floor: parsedFloor,
       },
     });
     return NextResponse.json(room, { status: 201 });
   } catch (error) {
+    const invalid = validationError(error);
+    if (invalid) return invalid;
     const message = error instanceof Error ? error.message : "Failed to create room";
     if (message.includes("Unique constraint") || message.includes("P2002")) {
       return NextResponse.json(
@@ -55,18 +53,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(_req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await requireHotelAdmin();
+  if (session instanceof NextResponse) return session;
 
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const hotel = await prisma.hotel.findFirst({ where: { ownerId: userId } });
+  const hotel = await prisma.hotel.findFirst({ where: { ownerId: session.userId } });
   if (!hotel) {
     return NextResponse.json({ rooms: [] });
   }

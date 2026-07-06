@@ -30,8 +30,8 @@ test.describe("Guest Account", () => {
   test("has navigation tabs to My Bookings", async ({ page }) => {
     await loginAsGuest(page);
     await page.goto("/account");
-    const bookingsLink = page.locator('a[href="/bookings"]').first();
-    await expect(bookingsLink).toBeVisible({ timeout: 10000 });
+    const bookingsTab = page.getByRole("tab", { name: /حجوزاتي|My Bookings/ });
+    await expect(bookingsTab).toBeVisible({ timeout: 10000 });
   });
 });
 

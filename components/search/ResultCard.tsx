@@ -10,9 +10,10 @@ interface ResultCardProps {
   room: AvailableRoomType;
   checkIn: string;
   checkOut: string;
+  guests: string;
 }
 
-export function ResultCard({ room, checkIn, checkOut }: ResultCardProps) {
+export function ResultCard({ room, checkIn, checkOut, guests }: ResultCardProps) {
   const router = useRouter();
   const { locale, t } = useLanguage();
   const name = locale === "ar" ? room.roomTypeNameAr : room.roomTypeNameEn;
@@ -25,6 +26,7 @@ export function ResultCard({ room, checkIn, checkOut }: ResultCardProps) {
       roomTypeId: room.roomTypeId,
       checkIn,
       checkOut,
+      guests,
     });
     router.push(`/hotels/${room.hotelId}?${params.toString()}`);
   };

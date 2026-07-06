@@ -15,7 +15,7 @@ test.describe("About Us page", () => {
 
     await expect(page.getByTestId("about-map")).toBeVisible();
 
-    await expect(page.getByText("info@suweraldhahab.sa")).toBeVisible();
+    await expect(page.getByText("info@sewaralandalus.sa")).toBeVisible();
     await expect(page.getByText("+966 11 655 5555")).toBeVisible();
     await expect(page.getByText("الرياض", { exact: false })).toBeVisible();
 
@@ -41,7 +41,7 @@ test.describe("About Us page", () => {
 
     await expect(page.getByTestId("about-map")).toBeVisible();
 
-    await expect(page.getByText("info@suweraldhahab.sa")).toBeVisible();
+    await expect(page.getByText("info@sewaralandalus.sa")).toBeVisible();
     await expect(page.getByText("Riyadh", { exact: false })).toBeVisible();
 
     const directions = page.getByRole("link", { name: "Directions" });

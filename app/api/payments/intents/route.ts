@@ -5,6 +5,8 @@ import { createPaymentIntent } from "@/lib/payments";
 import { bookingQuoteSchema } from "@/lib/schemas/booking";
 import { calculateStayPricing } from "@/lib/pricing";
 
+const blockingBookingStatuses = ["PENDING", "CONFIRMED", "CHECKED_IN"] as const;
+
 export async function POST(req: NextRequest) {
   const session = await requireRole("GUEST");
   if (session instanceof NextResponse) return session;
@@ -43,11 +45,32 @@ export async function POST(req: NextRequest) {
             endDate: { gte: checkIn },
           },
         },
+        rooms: {
+          where: {
+            status: "AVAILABLE",
+            reservations: {
+              none: {
+                AND: [
+                  { checkIn: { lt: checkOut } },
+                  { checkOut: { gt: checkIn } },
+                  { bookingLineItem: { booking: { status: { in: [...blockingBookingStatuses] } } } },
+                ],
+              },
+            },
+          },
+        },
       },
     });
 
     if (!roomType) {
       return NextResponse.json({ error: "Room type not found" }, { status: 404 });
+    }
+
+    if (roomType.rooms.length < item.quantity) {
+      return NextResponse.json(
+        { error: `Only ${roomType.rooms.length} rooms available for ${roomType.nameEn}` },
+        { status: 409 }
+      );
     }
 
     const pricing = calculateStayPricing(roomType, checkIn, checkOut, item.quantity);

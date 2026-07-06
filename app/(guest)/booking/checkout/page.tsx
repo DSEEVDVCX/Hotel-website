@@ -51,14 +51,30 @@ function CheckoutContent() {
   const [stripeElements, setStripeElements] = useState<StripeElements | null>(null);
 
   useEffect(() => {
-    if (!roomTypeId) return;
+    let cancelled = false;
+    setLoading(true);
+    setRoom(null);
+    if (!roomTypeId) {
+      setLoading(false);
+      return;
+    }
     fetch(`/api/room-types/${roomTypeId}`)
       .then((res) => {
         if (!res.ok) throw new Error("not found");
         return res.json();
       })
-      .then((data) => { setRoom(data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setRoom(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRoom(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [roomTypeId]);
 
   useEffect(() => {
@@ -163,6 +179,9 @@ function CheckoutContent() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (confirmedIntentId) {
+          await fetch(`/api/payments/intents/${confirmedIntentId}/cancel`, { method: "POST" }).catch(() => null);
+        }
         setError(data.error || (locale === "ar" ? "فشل الحجز" : "Booking failed"));
         setSubmitting(false);
         return;

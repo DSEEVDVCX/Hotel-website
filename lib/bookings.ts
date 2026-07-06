@@ -1,9 +1,26 @@
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { calculateStayPricing } from "@/lib/pricing";
-import { capturePayment } from "@/lib/payments";
+import { cancelPaymentIntent, capturePayment } from "@/lib/payments";
 
 const blockingBookingStatuses = ["PENDING", "CONFIRMED", "CHECKED_IN"] as const;
+
+function sameDateOnly(left: Date, right: Date): boolean {
+  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
+}
+
+function lineItemsMatch(
+  existing: Array<{ roomTypeId: string; quantity: number }>,
+  requested: Array<{ roomTypeId: string; quantity: number }>
+): boolean {
+  const serialize = (items: Array<{ roomTypeId: string; quantity: number }>) =>
+    [...items]
+      .sort((a, b) => a.roomTypeId.localeCompare(b.roomTypeId))
+      .map((item) => `${item.roomTypeId}:${item.quantity}`)
+      .join("|");
+
+  return serialize(existing) === serialize(requested);
+}
 
 export async function createBooking(
   data: {
@@ -22,6 +39,19 @@ export async function createBooking(
     include: { lineItems: true, payment: true },
   });
   if (existing) {
+    const sameRequest =
+      existing.guestId === data.guestId &&
+      existing.hotelId === data.hotelId &&
+      existing.guestCount === data.guestCount &&
+      sameDateOnly(existing.checkIn, data.checkIn) &&
+      sameDateOnly(existing.checkOut, data.checkOut) &&
+      existing.payment?.providerPaymentRef === data.paymentIntentId &&
+      lineItemsMatch(existing.lineItems, data.lineItems);
+
+    if (!sameRequest) {
+      throw new Error("Idempotency key was already used for a different booking request");
+    }
+
     return { booking: existing, created: false };
   }
 
@@ -126,39 +156,20 @@ export async function createBooking(
           bookingId: booking.id,
           amount: totalPrice,
           currency: "SAR",
+          providerPaymentRef: data.paymentIntentId,
           status: "PENDING",
         },
       });
 
       return booking;
     }, {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      isolationLevel: "Serializable",
       timeout: 10000,
     });
 
+    let paymentResult;
     try {
-      const paymentResult = await capturePayment(data.paymentIntentId, data.idempotencyKey, Number(result.totalPrice));
-
-      const updated = await prisma.$transaction(async (tx) => {
-        const updatedBooking = await tx.booking.update({
-          where: { id: result.id },
-          data: { status: "CONFIRMED" },
-          include: { lineItems: { include: { reservations: true } }, payment: true },
-        });
-
-        await tx.payment.update({
-          where: { bookingId: result.id },
-          data: {
-            status: "CAPTURED",
-            providerPaymentRef: paymentResult.id,
-            capturedAt: new Date(),
-          },
-        });
-
-        return updatedBooking;
-      });
-
-      return { booking: updated, created: true };
+      paymentResult = await capturePayment(data.paymentIntentId, data.idempotencyKey, Number(result.totalPrice));
     } catch (paymentError) {
       await prisma.$transaction(async (tx) => {
         await tx.roomReservation.deleteMany({
@@ -176,10 +187,42 @@ export async function createBooking(
           },
         });
       });
+
+      await cancelPaymentIntent(data.paymentIntentId, data.idempotencyKey).catch(() => null);
       throw new Error("Payment capture failed");
     }
+
+    try {
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: { id: result.id, status: "PENDING" },
+          data: { status: "CONFIRMED" },
+        });
+
+        await tx.payment.update({
+          where: { bookingId: result.id },
+          data: {
+            status: "CAPTURED",
+            providerPaymentRef: paymentResult.id,
+            capturedAt: new Date(),
+            failureReason: null,
+          },
+        });
+
+        const updatedBooking = await tx.booking.findUniqueOrThrow({
+          where: { id: result.id },
+          include: { lineItems: { include: { reservations: true } }, payment: true },
+        });
+
+        return updatedBooking;
+      });
+
+      return { booking: updated, created: true };
+    } catch {
+      throw new Error("Payment captured, but booking confirmation could not be recorded");
+    }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         throw new Error("Booking conflict — room may have been booked by another guest");
       }
@@ -201,7 +244,7 @@ export async function cancelBooking(
     throw new Error("Not authorized to cancel this booking");
   }
 
-  if (booking.status !== "CONFIRMED" && booking.status !== "CHECKED_IN") {
+  if (booking.status !== "CONFIRMED") {
     throw new Error(`Cannot cancel booking with status ${booking.status}`);
   }
 
@@ -221,10 +264,13 @@ export async function cancelBooking(
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    const updatedBooking = await tx.booking.update({
-      where: { id: bookingId },
+    const changed = await tx.booking.updateMany({
+      where: { id: bookingId, status: "CONFIRMED" },
       data: { status: "CANCELLED" },
     });
+    if (changed.count !== 1) {
+      throw new Error("Cannot cancel booking because it was already changed");
+    }
 
     for (const lineItem of booking.lineItems) {
       await tx.roomReservation.deleteMany({
@@ -243,7 +289,7 @@ export async function cancelBooking(
       });
     }
 
-    return updatedBooking;
+    return tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
   });
 
   return {

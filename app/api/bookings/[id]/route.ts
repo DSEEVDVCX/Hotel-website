@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getActiveSession } from "@/lib/session";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
+  const session = await getActiveSession();
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   const booking = await prisma.booking.findUnique({
@@ -33,7 +28,11 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (booking.guestId !== userId && userRole !== "ADMIN") {
+  const canRead =
+    booking.guestId === session.userId ||
+    (session.role === "ADMIN" && (session.isPlatformAdmin || booking.hotel.ownerId === session.userId));
+
+  if (!canRead) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

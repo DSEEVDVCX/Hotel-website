@@ -11,6 +11,7 @@ interface AvailableRoomsProps {
   hotelId: string;
   checkIn: string;
   checkOut: string;
+  guests: string;
 }
 
 function toNumber(value: unknown): number {
@@ -27,7 +28,7 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
-export function AvailableRooms({ roomTypes, hotelId, checkIn, checkOut }: AvailableRoomsProps) {
+export function AvailableRooms({ roomTypes, hotelId, checkIn, checkOut, guests }: AvailableRoomsProps) {
   const router = useRouter();
   const { locale, t } = useLanguage();
   const reduce = useReducedMotion();
@@ -47,6 +48,7 @@ export function AvailableRooms({ roomTypes, hotelId, checkIn, checkOut }: Availa
       roomTypeId,
       checkIn: checkIn || new Date().toISOString().slice(0, 10),
       checkOut: checkOut || new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      guests,
       quantity: "1",
     });
     router.push(`/booking/checkout?${params.toString()}`);

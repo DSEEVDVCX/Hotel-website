@@ -1,35 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { getFavorites, addFavorite } from "@/lib/favorites";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await requireRole("GUEST");
+  if (session instanceof NextResponse) return session;
 
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "GUEST") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const favorites = await getFavorites(userId);
+  const favorites = await getFavorites(session.userId);
   return NextResponse.json({ favorites });
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userRole = (session.user as { role: string }).role;
-  if (userRole !== "GUEST") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const session = await requireRole("GUEST");
+  if (session instanceof NextResponse) return session;
 
   const body = await req.json();
   const { hotelId } = body;
@@ -44,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await addFavorite(userId, hotelId);
+    await addFavorite(session.userId, hotelId);
     return NextResponse.json({ ok: true, hotelId }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message.includes("Unique constraint")) {

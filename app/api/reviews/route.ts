@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { writeReview, getReviewsByHotel } from "@/lib/firebase";
 import { z } from "zod";
 
@@ -12,13 +12,13 @@ const reviewSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
-  const userName = (session.user as { name?: string }).name ?? null;
+  const session = await requireRole("GUEST");
+  if (session instanceof NextResponse) return session;
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { name: true },
+  });
+  const userName = user?.name ?? null;
   const body = await req.json();
   const result = reviewSchema.safeParse(body);
   if (!result.success) {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   // One review per guest per hotel.
   const existingReview = await prisma.review.findUnique({
-    where: { guestId_hotelId: { guestId: userId, hotelId } },
+    where: { guestId_hotelId: { guestId: session.userId, hotelId } },
   });
   if (existingReview) {
     return NextResponse.json({ error: "Review already exists" }, { status: 409 });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const review = await prisma.review.create({
     data: {
-      guestId: userId,
+      guestId: session.userId,
       hotelId,
       rating,
       commentAr,
@@ -75,13 +75,10 @@ export async function GET(req: NextRequest) {
   // Authenticated lookup of the current guest's own review for this hotel.
   // Reviews are unique per (guestId, hotelId), so this returns at most one.
   if (req.nextUrl.searchParams.get("mine") === "true") {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = (session.user as { id: string }).id;
+    const session = await requireRole("GUEST");
+    if (session instanceof NextResponse) return session;
     const mine = await prisma.review.findUnique({
-      where: { guestId_hotelId: { guestId: userId, hotelId } },
+      where: { guestId_hotelId: { guestId: session.userId, hotelId } },
     });
     return NextResponse.json({
       review: mine

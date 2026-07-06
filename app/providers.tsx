@@ -30,7 +30,10 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("ar");
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof document !== "undefined" && document.documentElement.lang === "en") return "en";
+    return "ar";
+  });
 
   const dir = locale === "ar" ? "rtl" : "ltr";
 

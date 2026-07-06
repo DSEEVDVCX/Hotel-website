@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getActiveSession } from "@/lib/session";
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
+  const session = await getActiveSession();
+  if (session instanceof NextResponse) return session;
   const body = await req.json();
 
   const data: { name?: string; phoneNumber?: string } = {};
@@ -24,7 +20,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const updated = await prisma.user.update({
-    where: { id: userId },
+    where: { id: session.userId },
     data,
     select: { id: true, name: true, email: true, phoneNumber: true },
   });
@@ -33,14 +29,10 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
+  const session = await getActiveSession();
+  if (session instanceof NextResponse) return session;
   const user = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: session.userId },
     select: { id: true, name: true, email: true, phoneNumber: true, role: true, createdAt: true },
   });
 

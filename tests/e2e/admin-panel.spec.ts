@@ -6,11 +6,17 @@ const ADMIN_EMAIL = "admin@suweraldhahab.sa";
 const ADMIN_PASSWORD = "admin1234";
 
 async function loginAsAdmin(page: Page): Promise<void> {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill(ADMIN_EMAIL);
-  await page.locator('input[type="password"]').fill(ADMIN_PASSWORD);
+  await page.goto("/admin/login");
+  const emailInput = page.locator('input[type="email"]');
+  const passwordInput = page.locator('input[type="password"]');
+  await expect(emailInput).toBeVisible({ timeout: 10000 });
+  await emailInput.fill(ADMIN_EMAIL);
+  await passwordInput.fill(ADMIN_PASSWORD);
+  await emailInput.fill(ADMIN_EMAIL);
+  await expect(emailInput).toHaveValue(ADMIN_EMAIL);
+  await expect(passwordInput).toHaveValue(ADMIN_PASSWORD);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
+  await page.waitForURL((url) => !url.pathname.startsWith("/admin/login"), {
     timeout: 20000,
   });
 }
@@ -36,8 +42,8 @@ test.describe("Admin Management Panel", () => {
     // Period selector exposes two date inputs.
     await expect(page.locator('input[type="date"]')).toHaveCount(2);
 
-    // The switcher auto-selects the first owned hotel, which triggers the
-    // dashboard fetch. Wait for the URL to contain hotelId=.
+    const firstValue = await switcher.locator("option").nth(1).getAttribute("value");
+    if (firstValue) await switcher.selectOption({ value: firstValue });
     await expect(page).toHaveURL(/hotelId=/, { timeout: 20000 });
 
     // Wait for the occupancy KPI card label to render.
@@ -48,6 +54,8 @@ test.describe("Admin Management Panel", () => {
     page,
   }) => {
     await loginAsAdmin(page);
+
+    await page.waitForURL((url) => !url.pathname.startsWith("/admin/login"), { timeout: 20000 });
 
     // Resolve the first owned hotel for the media owner.
     const hotelsRes = await page.request.get("/api/admin/manage/hotels");
@@ -99,7 +107,9 @@ test.describe("Admin Management Panel", () => {
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
     await expect(page.locator("#property-switcher")).toBeVisible();
 
-    // Wait for property switcher to auto-select first hotel.
+    const switcher = page.locator("#property-switcher");
+    const firstValue = await switcher.locator("option").nth(1).getAttribute("value");
+    if (firstValue) await switcher.selectOption({ value: firstValue });
     await expect(page).toHaveURL(/hotelId=/, { timeout: 20000 });
 
     // Occupancy KPI label in English.

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
@@ -111,7 +111,7 @@ describe("Featured Curation (T056)", () => {
 
   it("prevents duplicates via unique constraint (P2002 → 409)", async () => {
     mockPrisma.hotel.findUnique.mockResolvedValue({ id: "h1", status: "ACTIVE" });
-    const uniqueError = new Prisma.PrismaClientKnownRequestError(
+    const uniqueError = new PrismaClientKnownRequestError(
       "Unique constraint failed on the fields: (`hotelId`)",
       { code: "P2002", clientVersion: "7.8.0" }
     );

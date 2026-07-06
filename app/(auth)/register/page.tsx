@@ -21,20 +21,25 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role: "GUEST" }),
-    });
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, role: "GUEST" }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Registration failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Registration failed");
+        return;
+      }
+
+      router.push("/login");
+    } catch {
+      setError("Registration failed. Check your connection and try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/login");
   };
 
   return (
@@ -47,7 +52,7 @@ export default function RegisterPage() {
         <Input label={t.auth.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
         <Input label={t.auth.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
         {error && <p className="text-sm text-error" role="alert">{error}</p>}
-        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "..." : t.auth.registerBtn}</Button>
+        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "جاري إنشاء الحساب..." : t.auth.registerBtn}</Button>
       </form>
       <p className="mt-6 text-center text-sm text-on-surface-muted">
         {t.auth.haveAccount}{" "}

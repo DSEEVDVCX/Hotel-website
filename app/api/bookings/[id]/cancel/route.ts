@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { cancelBooking } from "@/lib/bookings";
 
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
+  const session = await requireRole("GUEST");
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   try {
-    const result = await cancelBooking(id, userId);
+    const result = await cancelBooking(id, session.userId);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Cancellation failed";

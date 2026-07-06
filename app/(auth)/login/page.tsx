@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Suspense } from "react";
 
+function safeCallbackPath(raw: string | null, fallback: string, requiredPrefix?: string) {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return fallback;
+  if (requiredPrefix && !raw.startsWith(requiredPrefix)) return fallback;
+  return raw;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -18,7 +24,7 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const callbackUrl = searchParams.get("callbackUrl") || "";
+  const callbackUrl = safeCallbackPath(searchParams.get("callbackUrl"), "/account");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +55,7 @@ function LoginForm() {
           return;
         }
 
-        router.push(callbackUrl || "/account");
+        router.push(callbackUrl);
       } catch {
         router.push("/");
       }
@@ -65,7 +71,7 @@ function LoginForm() {
         <Input label={t.auth.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
         <Input label={t.auth.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         {error && <p className="text-sm text-error" role="alert">{error}</p>}
-        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "..." : t.auth.loginBtn}</Button>
+        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "جاري الدخول..." : t.auth.loginBtn}</Button>
       </form>
       <p className="mt-6 text-center text-sm text-on-surface-muted">
         {t.auth.noAccount}{" "}

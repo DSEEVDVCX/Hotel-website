@@ -8,6 +8,12 @@ import { useLanguage } from "@/app/providers";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
+function safeCallbackPath(raw: string | null, fallback: string, requiredPrefix?: string) {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return fallback;
+  if (requiredPrefix && !raw.startsWith(requiredPrefix)) return fallback;
+  return raw;
+}
+
 function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -17,7 +23,7 @@ function AdminLoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const callbackUrl = searchParams.get("callbackUrl") || "";
+  const callbackUrl = safeCallbackPath(searchParams.get("callbackUrl"), "/admin", "/admin");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +55,7 @@ function AdminLoginForm() {
         return;
       }
 
-      router.push(callbackUrl || "/admin");
+      router.push(callbackUrl);
     } catch {
       router.push("/admin/login");
     }
@@ -65,7 +71,7 @@ function AdminLoginForm() {
         <Input label={t.auth.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
         <Input label={t.auth.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         {error && <p className="text-sm text-error" role="alert">{error}</p>}
-        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "..." : t.auth.loginBtn}</Button>
+        <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "جاري الدخول..." : t.auth.loginBtn}</Button>
       </form>
       <p className="mt-6 text-center text-xs text-on-surface-subtle">
         <Link href="/login" className="link-underline">{t.auth.loginLink}</Link>

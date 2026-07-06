@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getActiveSession } from "@/lib/session";
 import { createBooking } from "@/lib/bookings";
+import { cancelPaymentIntent } from "@/lib/payments";
 import { createBookingSchema } from "@/lib/schemas/booking";
 import { parseEnumParam } from "@/lib/validation";
 import { BookingStatus } from "@prisma/client";
@@ -43,7 +44,12 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Booking failed";
     if (message.includes("conflict") || message.includes("available")) {
+      await cancelPaymentIntent(result.data.paymentIntentId, result.data.idempotencyKey).catch(() => null);
       return NextResponse.json({ error: message }, { status: 409 });
+    }
+    if (message.includes("capacity") || message.includes("Idempotency")) {
+      await cancelPaymentIntent(result.data.paymentIntentId, result.data.idempotencyKey).catch(() => null);
+      return NextResponse.json({ error: message }, { status: 422 });
     }
     if (message.includes("Payment")) {
       return NextResponse.json({ error: message }, { status: 402 });

@@ -106,7 +106,7 @@ export default function FeaturedCards({ properties }: { properties: FeaturedProp
                       <p className="font-bold text-on-surface" style={{ fontVariantNumeric: "tabular-nums" }}>
                         {prop.startingPrice.toLocaleString()}{" "}
                         <span className="text-xs font-normal text-on-surface-muted">
-                          {locale === "ar" ? "ر.س" : "SAR"} / {t.hotelHome.perNight}
+                          {locale === "ar" ? "ريال" : "SAR"} / {t.hotelHome.perNight}
                         </span>
                       </p>
                     </div>

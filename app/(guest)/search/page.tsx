@@ -15,6 +15,7 @@ function SearchResults() {
   const [results, setResults] = useState<AvailableRoomType[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState(false);
 
   const city = searchParams.get("city") || "";
   const checkIn = searchParams.get("checkIn") || "";
@@ -25,13 +26,21 @@ function SearchResults() {
     if (!city || !checkIn || !checkOut) return;
     setLoading(true);
     setSearched(true);
+    setError(false);
     fetch(`/api/search?city=${encodeURIComponent(city)}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Search failed");
+        return res.json();
+      })
       .then((data) => {
         setResults(data.results || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError(true);
+        setResults([]);
+        setLoading(false);
+      });
   }, [city, checkIn, checkOut, guests]);
 
   return (
@@ -57,7 +66,16 @@ function SearchResults() {
             </div>
           )}
 
-          {!loading && searched && results.length === 0 && (
+          {!loading && error && (
+            <div className="rounded-2xl border border-error/30 bg-error/5 p-8 text-center shadow-sm" role="alert">
+              <p className="mb-2 text-lg font-semibold text-error">{locale === "ar" ? "تعذر تحميل نتائج البحث" : "Search could not be loaded"}</p>
+              <p className="text-sm text-on-surface-muted">
+                {locale === "ar" ? "تحقق من التواريخ وحاول مرة أخرى" : "Check your dates and try again"}
+              </p>
+            </div>
+          )}
+
+          {!loading && !error && searched && results.length === 0 && (
             <div className="rounded-2xl border border-border bg-surface-raised p-8 text-center shadow-sm">
               <p className="mb-2 text-lg font-semibold text-on-surface">{t.search.noResults}</p>
               <p className="text-sm text-on-surface-muted">
@@ -67,8 +85,8 @@ function SearchResults() {
           )}
 
           <div className="grid gap-5 md:grid-cols-2">
-            {!loading && results.map((room) => (
-              <ResultCard key={room.roomTypeId} room={room} checkIn={checkIn} checkOut={checkOut} />
+            {!loading && !error && results.map((room) => (
+              <ResultCard key={room.roomTypeId} room={room} checkIn={checkIn} checkOut={checkOut} guests={guests} />
             ))}
           </div>
         </div>

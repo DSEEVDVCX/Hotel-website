@@ -12,12 +12,26 @@ export async function GET(
   const checkIn = searchParams.get("checkIn");
   const checkOut = searchParams.get("checkOut");
 
+  let parsedCheckIn: Date | null = null;
+  let parsedCheckOut: Date | null = null;
+  if (checkIn || checkOut) {
+    if (!checkIn || !checkOut || !/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) {
+      return NextResponse.json({ error: "Invalid date format" }, { status: 422 });
+    }
+
+    parsedCheckIn = new Date(`${checkIn}T00:00:00.000Z`);
+    parsedCheckOut = new Date(`${checkOut}T00:00:00.000Z`);
+    if (parsedCheckOut <= parsedCheckIn) {
+      return NextResponse.json({ error: "checkOut must be after checkIn" }, { status: 422 });
+    }
+  }
+
   const hotel =
-    checkIn && checkOut
+    parsedCheckIn && parsedCheckOut
       ? await getHotelWithAvailability(
           hotelId,
-          new Date(checkIn),
-          new Date(checkOut)
+          parsedCheckIn,
+          parsedCheckOut
         )
       : await prisma.hotel.findFirst({
           where: { id: hotelId, status: "ACTIVE" },
