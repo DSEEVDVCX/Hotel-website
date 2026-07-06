@@ -1,13 +1,23 @@
 import Stripe from "stripe";
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
+let stripeClient: Stripe | null = null;
 
-export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2026-06-24.dahlia",
-});
+function getStripe(): Stripe {
+  if (stripeClient) return stripeClient;
+
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+
+  stripeClient = new Stripe(stripeSecretKey, {
+    apiVersion: "2026-06-24.dahlia",
+  });
+  return stripeClient;
+}
 
 export async function createPaymentIntent(amount: number, currency: string = "sar"): Promise<Stripe.PaymentIntent> {
-  return stripe.paymentIntents.create({
+  return getStripe().paymentIntents.create({
     amount: Math.round(amount * 100),
     currency,
     automatic_payment_methods: { enabled: true },
@@ -25,6 +35,7 @@ export async function capturePayment(
     throw new Error("Invalid payment intent id");
   }
 
+  const stripe = getStripe();
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
   const expectedMinorAmount = Math.round(expectedAmount * 100);
   if (paymentIntent.amount !== expectedMinorAmount || paymentIntent.currency !== currency.toLowerCase()) {
@@ -51,7 +62,7 @@ export async function createRefund(
   amount: number,
   idempotencyKey: string
 ): Promise<Stripe.Refund> {
-  return stripe.refunds.create(
+  return getStripe().refunds.create(
     {
       payment_intent: paymentIntentId,
       amount: Math.round(amount * 100),
@@ -66,6 +77,7 @@ export async function cancelPaymentIntent(
 ): Promise<Stripe.PaymentIntent | null> {
   if (!paymentIntentId.startsWith("pi_")) return null;
 
+  const stripe = getStripe();
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
   if (["canceled", "succeeded"].includes(paymentIntent.status)) {
     return paymentIntent;
@@ -85,7 +97,7 @@ export function verifyWebhookSignature(
   signature: string,
   endpointSecret: string
 ): Stripe.Event {
-  return stripe.webhooks.constructEvent(
+  return getStripe().webhooks.constructEvent(
     payload,
     signature,
     endpointSecret
