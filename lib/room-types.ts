@@ -56,6 +56,15 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
+function isDatabaseConnectionError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P1001"
+  );
+}
+
 export async function getAllRoomTypes(): Promise<RoomTypeSummary[]> {
   // Prefer Firebase (denormalized catalog); fall back to Postgres when disabled/empty.
   const fb = await getActiveRoomTypes();
@@ -79,44 +88,52 @@ export async function getAllRoomTypes(): Promise<RoomTypeSummary[]> {
     }));
   }
 
-  const roomTypes = await prisma.roomType.findMany({
-    where: { hotel: { status: "ACTIVE" } },
-    include: {
-      hotel: {
-        select: {
-          id: true,
-          nameAr: true,
-          nameEn: true,
-          city: true,
-          starRating: true,
-          status: true,
+  try {
+    const roomTypes = await prisma.roomType.findMany({
+      where: { hotel: { status: "ACTIVE" } },
+      include: {
+        hotel: {
+          select: {
+            id: true,
+            nameAr: true,
+            nameEn: true,
+            city: true,
+            starRating: true,
+            status: true,
+          },
+        },
+        rooms: {
+          where: { status: "AVAILABLE" },
+          select: { id: true },
         },
       },
-      rooms: {
-        where: { status: "AVAILABLE" },
-        select: { id: true },
-      },
-    },
-    orderBy: { basePrice: "asc" },
-  });
+      orderBy: { basePrice: "asc" },
+    });
 
-  return roomTypes.map((rt) => ({
-    id: rt.id,
-    hotelId: rt.hotelId,
-    nameAr: rt.nameAr,
-    nameEn: rt.nameEn,
-    descriptionAr: rt.descriptionAr,
-    descriptionEn: rt.descriptionEn,
-    capacity: rt.capacity,
-    bedType: rt.bedType,
-    basePrice: toNumber(rt.basePrice),
-    amenities: Array.isArray(rt.amenities) ? rt.amenities : [],
-    photos: Array.isArray(rt.photos) ? rt.photos : [],
-    starRating: rt.hotel.starRating,
-    hotelNameAr: rt.hotel.nameAr,
-    hotelNameEn: rt.hotel.nameEn,
-    city: rt.hotel.city,
-  }));
+    return roomTypes.map((rt) => ({
+      id: rt.id,
+      hotelId: rt.hotelId,
+      nameAr: rt.nameAr,
+      nameEn: rt.nameEn,
+      descriptionAr: rt.descriptionAr,
+      descriptionEn: rt.descriptionEn,
+      capacity: rt.capacity,
+      bedType: rt.bedType,
+      basePrice: toNumber(rt.basePrice),
+      amenities: Array.isArray(rt.amenities) ? rt.amenities : [],
+      photos: Array.isArray(rt.photos) ? rt.photos : [],
+      starRating: rt.hotel.starRating,
+      hotelNameAr: rt.hotel.nameAr,
+      hotelNameEn: rt.hotel.nameEn,
+      city: rt.hotel.city,
+    }));
+  } catch (error) {
+    if (isDatabaseConnectionError(error)) {
+      console.warn("[catalog] database unavailable, rendering empty room catalog");
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function getRoomTypeById(id: string): Promise<RoomTypeDetail | null> {
