@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicHotelCards } from "@/lib/room-types";
+import { getAllRoomTypes } from "@/lib/room-types";
 import RoomsGrid from "@/components/homepage/rooms-grid";
 import SiteFooter from "@/components/homepage/site-footer";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RoomsPage() {
-  const rooms = await getPublicHotelCards();
+  const rooms = await getAllRoomTypes();
 
   return (
     <>

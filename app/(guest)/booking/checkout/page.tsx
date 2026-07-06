@@ -7,7 +7,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
-import { Calendar, Users, ArrowRight, Check, ArrowLeft } from "@phosphor-icons/react";
+import { Calendar, Users, ArrowRight, Check, ArrowLeft, Camera } from "@phosphor-icons/react";
 import Link from "next/link";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -324,7 +324,13 @@ function CheckoutContent() {
               <h2 className="mb-4 font-display text-lg font-bold text-on-surface">{t.booking.orderSummary}</h2>
 
               <div className="mb-4 flex gap-3">
-                <Image src={room.photos?.[0] || `https://picsum.photos/seed/sewar-checkout-${roomTypeId.slice(-4)}/200/150`} alt={roomName} width={112} height={80} unoptimized className="h-20 w-28 shrink-0 rounded-xl object-cover img-elegant" />
+                {room.photos?.[0] ? (
+                  <Image src={room.photos[0]} alt={roomName} width={112} height={80} unoptimized className="h-20 w-28 shrink-0 rounded-xl object-cover img-elegant" />
+                ) : (
+                  <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-on-surface-subtle">
+                    <Camera size={24} weight="light" aria-hidden />
+                  </div>
+                )}
                 <div>
                   <p className="font-display text-sm font-bold text-on-surface">{roomName}</p>
                   <p className="text-xs text-on-surface-muted">{hotelName}</p>

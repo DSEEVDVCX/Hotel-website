@@ -226,7 +226,7 @@ export async function getRoomTypeById(id: string): Promise<RoomTypeDetail | null
 
   const gallery = Array.isArray(rt.photos) && rt.photos.length > 0
     ? rt.photos.map((url, i) => ({ url, captionAr: rt.nameAr, captionEn: rt.nameEn, sortOrder: i }))
-    : Array.from({ length: 4 }).map((_, i) => ({ url: `https://picsum.photos/seed/sewar-room-${id.slice(-4)}-${i}/800/600`, captionAr: rt.nameAr, captionEn: rt.nameEn, sortOrder: i }));
+    : [];
 
   return {
     id: rt.id,

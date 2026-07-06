@@ -20,10 +20,12 @@ test.describe("Homepage", () => {
     await expect(page).toHaveURL(/\/search/);
   });
 
-  test("displays featured property cards when hotels exist", async ({ page }) => {
+  test("displays room-first cards when inventory exists", async ({ page }) => {
     await page.goto("/");
 
-    const cards = page.locator("a[href*='/hotels/']");
+    await expect(page.locator("a[href*='/hotels/']")).toHaveCount(0);
+
+    const cards = page.locator("a[href*='/rooms/']");
     const count = await cards.count();
     if (count > 0) {
       await expect(cards.first()).toBeVisible();

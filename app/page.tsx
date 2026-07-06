@@ -1,4 +1,4 @@
-import { getPublicHotelCards } from "@/lib/room-types";
+import { getAllRoomTypes } from "@/lib/room-types";
 import { getFeaturedProperties } from "@/lib/featured";
 import Navbar from "@/components/Navbar";
 import nextDynamic from "next/dynamic";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const [rooms, featured] = await Promise.all([
-    getPublicHotelCards(),
+    getAllRoomTypes(),
     getFeaturedProperties(6),
   ]);
 

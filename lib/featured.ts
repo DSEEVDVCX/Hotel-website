@@ -11,6 +11,7 @@ function isDatabaseConnectionError(error: unknown): boolean {
 
 export type FeaturedProperty = {
   hotelId: string;
+  roomTypeId: string | null;
   nameAr: string;
   nameEn: string;
   city: string;
@@ -38,7 +39,7 @@ export async function getFeaturedProperties(limit = 6): Promise<FeaturedProperty
             status: true,
             photos: true,
             roomTypes: {
-              select: { basePrice: true },
+              select: { id: true, basePrice: true },
               orderBy: { basePrice: "asc" },
               take: 1,
             },
@@ -60,6 +61,7 @@ export async function getFeaturedProperties(limit = 6): Promise<FeaturedProperty
         const startingPrice = f.hotel.roomTypes[0]?.basePrice?.toNumber() ?? 0;
         return {
           hotelId: f.hotel.id,
+          roomTypeId: f.hotel.roomTypes[0]?.id ?? null,
           nameAr: f.hotel.nameAr,
           nameEn: f.hotel.nameEn,
           city: f.hotel.city,
@@ -97,7 +99,7 @@ export async function getFeaturedProperties(limit = 6): Promise<FeaturedProperty
         starRating: true,
         photos: true,
         roomTypes: {
-          select: { basePrice: true },
+          select: { id: true, basePrice: true },
           orderBy: { basePrice: "asc" },
           take: 1,
         },
@@ -121,6 +123,7 @@ export async function getFeaturedProperties(limit = 6): Promise<FeaturedProperty
         const startingPrice = hotel.roomTypes[0]?.basePrice?.toNumber() ?? 0;
         return {
           hotelId: hotel.id,
+          roomTypeId: hotel.roomTypes[0]?.id ?? null,
           nameAr: hotel.nameAr,
           nameEn: hotel.nameEn,
           city: hotel.city,

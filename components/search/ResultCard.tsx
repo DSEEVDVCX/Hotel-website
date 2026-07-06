@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLanguage } from "@/app/providers";
-import { Star, MapPin, ArrowRight } from "@phosphor-icons/react";
+import { Star, MapPin, ArrowRight, Camera } from "@phosphor-icons/react";
 import type { AvailableRoomType } from "@/lib/availability";
 
 interface ResultCardProps {
@@ -22,21 +22,25 @@ export function ResultCard({ room, checkIn, checkOut, guests }: ResultCardProps)
 
   const handleBook = () => {
     const params = new URLSearchParams({
-      hotelId: room.hotelId,
-      roomTypeId: room.roomTypeId,
       checkIn,
       checkOut,
       guests,
     });
-    router.push(`/hotels/${room.hotelId}?${params.toString()}`);
+    router.push(`/rooms/${room.roomTypeId}?${params.toString()}`);
   };
 
-  const photo = room.photos?.[0] || `https://picsum.photos/seed/sewar-search-${room.roomTypeId?.slice(-4)}/600/400`;
+  const photo = room.photos?.[0] ?? null;
 
   return (
     <div className="card group overflow-hidden">
       <div className="relative aspect-[4/3] overflow-hidden">
-        <Image src={photo} alt={name} fill unoptimized sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
+        {photo ? (
+          <Image src={photo} alt={name} fill unoptimized sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
+        ) : (
+          <div className="flex h-full items-center justify-center bg-surface-muted text-on-surface-subtle">
+            <Camera size={34} weight="light" aria-hidden />
+          </div>
+        )}
         {room.availableRooms > 0 && (
           <span className="absolute start-3 top-3 rounded-full bg-success/90 px-2.5 py-1 text-xs font-semibold text-on-dark">
             {room.availableRooms} {t.search.availableRooms}

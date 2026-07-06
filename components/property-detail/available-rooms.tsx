@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
-import { Users, Bed, ArrowRight } from "@phosphor-icons/react";
+import { Users, Bed, ArrowRight, Camera } from "@phosphor-icons/react";
 
 interface AvailableRoomsProps {
   roomTypes: any[];
@@ -70,7 +70,7 @@ export function AvailableRooms({ roomTypes, hotelId, checkIn, checkOut, guests }
         const basePrice = toNumber(rt.basePrice);
         const perStay = basePrice * nights;
         const available = rt.rooms?.length ?? 0;
-        const photo = rt.gallery?.[0]?.url ?? rt.photos?.[0] ?? `https://picsum.photos/seed/sewar-room-${rt.id?.slice(-4) || idx}/600/400`;
+        const photo = rt.gallery?.[0]?.url ?? rt.photos?.[0] ?? null;
         const bookable = available > 0 || !checkIn;
 
         return (
@@ -84,9 +84,17 @@ export function AvailableRooms({ roomTypes, hotelId, checkIn, checkOut, guests }
             <div className="card group overflow-hidden">
               <div className="flex flex-col md:flex-row">
                 {/* Image */}
-                <div className="relative h-52 w-full overflow-hidden md:h-auto md:w-64 shrink-0">
-                  <Image src={photo} alt={name ?? ""} fill unoptimized sizes="(min-width: 768px) 16rem, 100vw" className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-surface-dark/40 to-transparent" />
+                <div className="relative h-52 w-full shrink-0 overflow-hidden bg-surface-muted md:h-auto md:w-64">
+                  {photo ? (
+                    <>
+                      <Image src={photo} alt={name ?? ""} fill unoptimized sizes="(min-width: 768px) 16rem, 100vw" className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105" style={{ transitionTimingFunction: "var(--ease-standard)" }} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-surface-dark/40 to-transparent" />
+                    </>
+                  ) : (
+                    <div className="flex h-full min-h-52 items-center justify-center text-on-surface-subtle">
+                      <Camera size={30} weight="light" aria-hidden />
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}

@@ -55,7 +55,7 @@ export default function FavoritesList() {
         {favorites.map((fav) => (
           <div key={fav.hotelId} className="card overflow-hidden">
             {fav.heroImage && (
-              <Link href={`/hotels/${fav.hotelId}`}>
+              <Link href="/rooms">
                 <div className="relative aspect-[4/3] w-full">
                   <Image
                   src={fav.heroImage}
@@ -69,7 +69,7 @@ export default function FavoritesList() {
               </Link>
             )}
             <div className="p-4">
-              <Link href={`/hotels/${fav.hotelId}`}>
+              <Link href="/rooms">
                 <h3 className="font-display font-bold text-on-surface">{locale === "ar" ? fav.nameAr : fav.nameEn}</h3>
               </Link>
               <p className="mb-2 flex items-center gap-1 text-sm text-on-surface-muted">

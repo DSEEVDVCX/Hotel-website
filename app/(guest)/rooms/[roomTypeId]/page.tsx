@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
-import { Star, Users, Bed, Ruler, ArrowRight, MapPin, ShieldCheck, Clock, Check } from "@phosphor-icons/react";
+import { Star, Users, Bed, Ruler, ArrowRight, MapPin, ShieldCheck, Clock, Check, Camera } from "@phosphor-icons/react";
 import { PhotoGallery } from "@/components/property-detail/photo-gallery";
 import type { RoomTypeDetail } from "@/lib/room-types";
 
@@ -71,19 +71,26 @@ export default function RoomDetailPage({ params }: { params: Promise<{ roomTypeI
   const hotelName = locale === "ar" ? room.hotelNameAr : room.hotelNameEn;
   const currency = locale === "ar" ? "ر.س" : "SAR";
   const guestsLabel = locale === "ar" ? "ضيوف" : "guests";
+  const heroImage = room.photos?.[0] ?? room.gallery?.[0]?.url ?? null;
 
   return (
     <main className="bg-surface pt-16">
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[360px] overflow-hidden bg-surface-dark">
-          <motion.img
-            initial={reduce ? {} : { scale: 1.05 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 1, ease: [0.2, 0, 0, 1] }}
-            src={room.photos?.[0] || room.gallery?.[0]?.url || `https://picsum.photos/seed/sewar-room-${roomTypeId.slice(-6)}/1920/1080`}
-            alt={name}
-            className="absolute inset-0 h-full w-full object-cover img-elegant"
-          />
+          {heroImage ? (
+            <motion.img
+              initial={reduce ? {} : { scale: 1.05 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 1, ease: [0.2, 0, 0, 1] }}
+              src={heroImage}
+              alt={name}
+              className="absolute inset-0 h-full w-full object-cover img-elegant"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-surface-dark text-on-dark/25">
+              <Camera size={64} weight="light" aria-hidden />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-surface-dark/40 via-surface-dark/30 to-surface-dark/85" />
           <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-5 pb-8 lg:px-8">
             <Link href="/" className="mb-auto mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-4 text-xs font-medium text-on-dark/85 backdrop-blur-sm transition-colors hover:border-primary hover:text-primary" style={{ width: "fit-content" }}>
@@ -161,7 +168,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ roomTypeI
               )}
 
               {/* Hotel policies */}
-              <div>
+              <div data-testid="room-policies">
                 <h2 className="mb-4 font-display text-xl font-bold text-on-surface">{t.propertyDetail.policies}</h2>
                 <div className="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
                   <dl className="space-y-3 text-sm">
@@ -210,8 +217,16 @@ export default function RoomDetailPage({ params }: { params: Promise<{ roomTypeI
                       roomTypeId: room.id,
                       hotelId: room.hotelId,
                     });
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const checkIn = searchParams.get("checkIn");
+                    const checkOut = searchParams.get("checkOut");
+                    const guests = searchParams.get("guests");
+                    if (checkIn) params.set("checkIn", checkIn);
+                    if (checkOut) params.set("checkOut", checkOut);
+                    if (guests) params.set("guests", guests);
                     router.push(`/booking/checkout?${params.toString()}`);
                   }}
+                  data-testid="proceed-to-booking"
                   className="btn btn-primary w-full"
                   disabled={room.availableRoomsCount === 0}
                 >

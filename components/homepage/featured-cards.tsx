@@ -3,16 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "motion/react";
-import { Star, MapPin, ArrowRight } from "@phosphor-icons/react";
+import { Star, MapPin, ArrowRight, Camera } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
 import type { FeaturedProperty } from "@/lib/featured";
 import FavoriteToggle from "@/components/guest-account/favorite-toggle";
 
 export default function FeaturedCards({ properties }: { properties: FeaturedProperty[] }) {
   const { t, locale } = useLanguage();
-
-  const fallbackImage = (hotelId: string, idx: number) =>
-    `https://picsum.photos/seed/sewar-hotel-${idx}-${hotelId.slice(-4)}/800/600`;
 
   if (properties.length === 0) {
     return (
@@ -59,21 +56,27 @@ export default function FeaturedCards({ properties }: { properties: FeaturedProp
               transition={{ duration: 0.4, delay: i * 0.06, ease: [0.2, 0, 0, 1] }} // Priority 7: stagger 30-50ms
             >
               <Link
-                href={`/hotels/${prop.hotelId}`}
+                href={prop.roomTypeId ? `/rooms/${prop.roomTypeId}` : "/rooms"}
                 className="card group block h-full"
                 aria-label={`${locale === "ar" ? prop.nameAr : prop.nameEn}, ${prop.city}`}
               >
                 {/* Accessible image with alt (Priority 1: alt-text) */}
                 <div className="relative aspect-[4/3] overflow-hidden">
-                  <Image
-                    src={prop.heroImage || fallbackImage(prop.hotelId, i)}
-                    alt={locale === "ar" ? prop.nameAr : prop.nameEn}
-                    fill
-                    unoptimized
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                    className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105"
-                    style={{ transitionTimingFunction: "var(--ease-standard)" }}
-                  />
+                  {prop.heroImage ? (
+                    <Image
+                      src={prop.heroImage}
+                      alt={locale === "ar" ? prop.nameAr : prop.nameEn}
+                      fill
+                      unoptimized
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover img-elegant transition-transform duration-500 group-hover:scale-105"
+                      style={{ transitionTimingFunction: "var(--ease-standard)" }}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-surface-muted text-on-surface-subtle">
+                      <Camera size={34} weight="light" aria-hidden />
+                    </div>
+                  )}
                   {prop.isCurated && (
                     <span className="absolute start-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[0.65rem] font-semibold text-surface-raised shadow-sm">
                       {locale === "ar" ? "مميز" : "Featured"}

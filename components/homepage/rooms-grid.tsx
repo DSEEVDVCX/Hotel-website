@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "motion/react";
-import { Star, Users, Bed, ArrowRight } from "@phosphor-icons/react";
+import { Star, Users, Bed, ArrowRight, Camera } from "@phosphor-icons/react";
 import { useLanguage } from "@/app/providers";
 import type { RoomTypeSummary } from "@/lib/room-types";
 import { useMemo, useRef, useState } from "react";
@@ -126,6 +126,7 @@ export default function RoomsGrid({
           <div className="grid grid-flow-dense grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[380px]">
             {visibleRooms.map((room, i) => {
               const isLarge = i === 0;
+              const photo = room.photos?.[0] ?? null;
               return (
                 <motion.div
                   key={room.id}
@@ -137,16 +138,22 @@ export default function RoomsGrid({
                 >
                   <Link href={room.href ?? `/rooms/${room.id}`} className="card group flex h-full flex-col" aria-label={locale === "ar" ? room.nameAr : room.nameEn}>
                     {/* Image — overflow-hidden for scale effect */}
-                    <div className={`relative overflow-hidden ${isLarge ? "flex-1 min-h-[280px]" : "aspect-[4/3]"}`}>
-                      <Image
-                        src={room.photos?.[0] || `https://picsum.photos/seed/sewar-room-${room.id.slice(-4)}/700/525`}
-                        alt={locale === "ar" ? room.nameAr : room.nameEn}
-                        fill
-                        unoptimized
-                        sizes={isLarge ? "(min-width: 1024px) 66vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"}
-                        className="object-cover img-elegant transition-transform duration-700 group-hover:scale-105"
-                        style={{ transitionTimingFunction: "var(--ease-standard)" }}
-                      />
+                    <div className={`relative overflow-hidden bg-surface-muted ${isLarge ? "flex-1 min-h-[280px]" : "aspect-[4/3]"}`}>
+                      {photo ? (
+                        <Image
+                          src={photo}
+                          alt={locale === "ar" ? room.nameAr : room.nameEn}
+                          fill
+                          unoptimized
+                          sizes={isLarge ? "(min-width: 1024px) 66vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"}
+                          className="object-cover img-elegant transition-transform duration-700 group-hover:scale-105"
+                          style={{ transitionTimingFunction: "var(--ease-standard)" }}
+                        />
+                      ) : (
+                        <div className="flex h-full min-h-[220px] items-center justify-center text-on-surface-subtle">
+                          <Camera size={34} weight="light" aria-hidden />
+                        </div>
+                      )}
                       <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-gold-deep via-gold to-gold-deep" />
                       <div className="absolute start-3 top-3 flex items-center gap-0.5 rounded-full bg-surface-dark/70 px-2.5 py-1 backdrop-blur-sm">
                         {Array.from({ length: room.starRating }).map((_, j) => <Star key={j} size={11} weight="fill" className="text-gold-bright" aria-hidden />)}
@@ -156,45 +163,27 @@ export default function RoomsGrid({
                     {/* Content */}
                     <div className="p-5">
                       <h3 className={`font-display font-bold text-primary ${isLarge ? "text-2xl" : "text-lg"}`}>{locale === "ar" ? room.nameAr : room.nameEn}</h3>
-                      <p className="mt-1 font-kufi text-sm text-on-surface-muted">
-                        {room.kind === "hotel" ? room.city : `${locale === "ar" ? room.hotelNameAr : room.hotelNameEn} · ${room.city}`}
-                      </p>
+                      <p className="mt-1 font-kufi text-sm text-on-surface-muted">{locale === "ar" ? room.hotelNameAr : room.hotelNameEn} · {room.city}</p>
 
                       {isLarge && room.descriptionAr && (
                         <p className="mt-3 max-w-md text-sm leading-relaxed text-on-surface-muted">{locale === "ar" ? room.descriptionAr : room.descriptionEn}</p>
                       )}
 
                       {/* Specs — no meta-labels */}
-                      {room.kind === "hotel" ? (
-                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-kufi text-xs text-on-surface-muted">
-                          {room.availableRoomsCount !== undefined && room.availableRoomsCount > 0 && (
-                            <span className="inline-flex items-center gap-1"><Bed size={13} weight="light" aria-hidden />{room.availableRoomsCount} {locale === "ar" ? "غرفة متاحة" : "available rooms"}</span>
-                          )}
-                          {room.capacity > 0 && <span className="inline-flex items-center gap-1"><Users size={13} weight="light" aria-hidden />{room.capacity}+ {guestsLabel}</span>}
-                        </div>
-                      ) : (
-                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-kufi text-xs text-on-surface-muted">
-                          <span className="inline-flex items-center gap-1"><Users size={13} weight="light" aria-hidden />{room.capacity} {guestsLabel}</span>
-                          <span className="inline-flex items-center gap-1"><Bed size={13} weight="light" aria-hidden />{room.bedType}</span>
-                        </div>
-                      )}
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-kufi text-xs text-on-surface-muted">
+                        <span className="inline-flex items-center gap-1"><Users size={13} weight="light" aria-hidden />{room.capacity} {guestsLabel}</span>
+                        <span className="inline-flex items-center gap-1"><Bed size={13} weight="light" aria-hidden />{room.bedType}</span>
+                      </div>
 
                       {/* Price + CTA */}
                       <div className="mt-4 flex items-end justify-between border-t border-border pt-3">
-                        {room.basePrice > 0 ? (
-                          <div>
-                            <span className="font-kufi text-xs text-on-surface-subtle">{t.hotelHome.startingFrom}</span>
-                            <p className="font-display text-xl font-bold text-gold-deep" style={{ fontVariantNumeric: "tabular-nums" }}>
-                              {room.basePrice.toLocaleString()} {currency}
-                              <span className="text-xs font-normal text-on-surface-muted"> / {t.hotelHome.perNight}</span>
-                            </p>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="font-kufi text-xs text-on-surface-subtle">{locale === "ar" ? "فندق متاح" : "Available hotel"}</span>
-                            <p className="font-display text-xl font-bold text-gold-deep">{t.hotelHome.viewDetails}</p>
-                          </div>
-                        )}
+                        <div>
+                          <span className="font-kufi text-xs text-on-surface-subtle">{t.hotelHome.startingFrom}</span>
+                          <p className="font-display text-xl font-bold text-gold-deep" style={{ fontVariantNumeric: "tabular-nums" }}>
+                            {room.basePrice.toLocaleString()} {currency}
+                            <span className="text-xs font-normal text-on-surface-muted"> / {t.hotelHome.perNight}</span>
+                          </p>
+                        </div>
                         <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-primary-tint px-3 font-kufi text-xs font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-on-dark">
                           {t.hotelHome.viewDetails}
                           <ArrowRight size={13} weight="bold" className="rtl:rotate-180" aria-hidden />

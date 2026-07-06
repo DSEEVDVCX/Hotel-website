@@ -46,15 +46,15 @@ export default function ContentSections() {
       {/* Experiences — image scale/fade on scroll */}
       <section id="experiences" ref={expRef} className="scroll-mt-24 section-pad">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-5 lg:grid-cols-2 lg:gap-16 lg:px-8">
-          {/* Image with scroll-driven scale & fade */}
+          {/* Visual panel with scroll-driven scale & fade */}
           <div className="overflow-hidden rounded-2xl border border-gold/30 shadow-lg">
-            <motion.img
+            <motion.div
               style={{ scale: expImgScale, opacity: expImgOpacity }}
-              src="https://picsum.photos/seed/sewar-spa-moroccan-hammam-luxury/800/1000"
-              alt={locale === "ar" ? "تجارب استثنائية" : "Exceptional Experiences"}
-              className="aspect-[4/5] w-full object-cover img-elegant"
-              loading="lazy" decoding="async"
-            />
+              className="flex aspect-[4/5] w-full items-center justify-center bg-surface-muted text-primary-hover"
+              aria-label={locale === "ar" ? "تجارب استثنائية" : "Exceptional Experiences"}
+            >
+              <Sparkle size={72} weight="light" aria-hidden />
+            </motion.div>
           </div>
 
           {/* Content — no meta-labels, clean list */}

@@ -4,7 +4,7 @@ import { Suspense, use, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/app/providers";
 import { motion, useReducedMotion } from "motion/react";
-import { Star, MapPin, Clock, ShieldCheck, ArrowLeft, ArrowRight, Heart } from "@phosphor-icons/react";
+import { Star, MapPin, Clock, ShieldCheck, ArrowLeft, ArrowRight, Heart, Camera } from "@phosphor-icons/react";
 import Link from "next/link";
 import { PhotoGallery } from "@/components/property-detail/photo-gallery";
 import { LocationMap } from "@/components/property-detail/location-map";
@@ -74,16 +74,13 @@ function HotelDetailContent({ hotelId }: { hotelId: string }) {
 
   const name = locale === "ar" ? hotel.nameAr : hotel.nameEn;
   const description = locale === "ar" ? hotel.descriptionAr : hotel.descriptionEn;
-  const heroImage =
-    hotel.photos?.[0] ||
-    hotel.gallery?.[0]?.url ||
-    `https://picsum.photos/seed/sewar-hotel-${hotelId.slice(-6)}/1920/1080`;
+  const heroImage = hotel.gallery?.[0]?.url ?? hotel.photos?.[0] ?? null;
 
   const galleryImages = (hotel.gallery ?? []).length > 0
     ? (hotel.gallery ?? []).map((m: any) => ({ url: m.url, captionAr: m.captionAr, captionEn: m.captionEn, sortOrder: m.sortOrder }))
     : (hotel.photos ?? []).length > 0
     ? (hotel.photos ?? []).map((url: string, i: number) => ({ url, captionAr: name, captionEn: name, sortOrder: i }))
-    : Array.from({ length: 5 }).map((_, i) => ({ url: `https://picsum.photos/seed/sewar-hotel-${hotelId.slice(-4)}-${i}/800/600`, captionAr: name, captionEn: name, sortOrder: i }));
+    : [];
 
   const startPrice = hotel.roomTypes?.[0]?.basePrice;
   const price = startPrice
@@ -96,14 +93,20 @@ function HotelDetailContent({ hotelId }: { hotelId: string }) {
     <main className="bg-surface">
       {/* Hero */}
       <section className="relative h-[70vh] min-h-[480px] overflow-hidden bg-surface-dark">
-        <motion.img
-          initial={reduce ? {} : { scale: 1.05 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 1, ease: [0.2, 0, 0, 1] }}
-          src={heroImage}
-          alt={name}
-          className="absolute inset-0 h-full w-full object-cover img-elegant"
-        />
+        {heroImage ? (
+          <motion.img
+            initial={reduce ? {} : { scale: 1.05 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 1, ease: [0.2, 0, 0, 1] }}
+            src={heroImage}
+            alt={name}
+            className="absolute inset-0 h-full w-full object-cover img-elegant"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-surface-dark text-on-dark/25">
+            <Camera size={72} weight="light" aria-hidden />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-surface-dark/50 via-surface-dark/30 to-surface-dark/90" />
 
         <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-5 pb-8 lg:px-8 lg:pb-12">

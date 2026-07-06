@@ -9,26 +9,25 @@ function isoDate(daysFromNow: number): string {
 const CHECK_IN = isoDate(7);
 const CHECK_OUT = isoDate(9);
 
-async function discoverHotelId(page: Page): Promise<string | null> {
-  await page.goto("/");
-  const link = page.locator("a[href*='/hotels/']").first();
+async function discoverRoomTypeId(page: Page): Promise<string | null> {
+  await page.goto("/rooms");
+  const link = page.locator("a[href*='/rooms/']").first();
   if ((await link.count()) === 0) return null;
   const href = await link.getAttribute("href");
   if (!href) return null;
-  const match = href.match(/\/hotels\/([^/?#]+)/);
+  const match = href.match(/\/rooms\/([^/?#]+)/);
   return match ? match[1] : null;
 }
 
-async function openPropertyDetail(page: Page, hotelId: string) {
-  await page.goto(`/hotels/${hotelId}?checkIn=${CHECK_IN}&checkOut=${CHECK_OUT}`);
+async function openRoomDetail(page: Page, roomTypeId: string) {
+  await page.goto(`/rooms/${roomTypeId}?checkIn=${CHECK_IN}&checkOut=${CHECK_OUT}&guests=2`);
   await expect(page.getByTestId("property-gallery")).toBeVisible({ timeout: 20000 });
 }
 
-async function assertCoreSections(page: Page) {
+async function assertRoomSections(page: Page) {
   await expect(page.getByTestId("property-gallery")).toBeVisible();
-  await expect(page.getByTestId("property-map")).toBeVisible();
-  await expect(page.getByTestId("property-reviews")).toBeVisible();
-  await expect(page.getByTestId("property-rooms")).toBeVisible();
+  await expect(page.getByTestId("room-policies")).toBeVisible();
+  await expect(page.getByTestId("proceed-to-booking")).toBeVisible();
 }
 
 async function maybeReachBookingEntry(page: Page) {
@@ -43,49 +42,39 @@ async function maybeReachBookingEntry(page: Page) {
   await expect(page).toHaveURL(/\/(booking\/checkout|login)/, { timeout: 10000 });
 }
 
-test.describe("Property Detail — Arabic (RTL)", () => {
+test.describe("Room Detail — Arabic (RTL)", () => {
   test.use({ locale: "ar-SA" });
 
-  test("guest sees gallery, map, reviews, rooms and can reach booking", async ({ page }) => {
+  test("guest sees room details and can reach booking", async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("locale", "ar");
     });
 
-    const hotelId = await discoverHotelId(page);
-    test.skip(!hotelId, "No hotels available to test property detail");
-    await openPropertyDetail(page, hotelId as string);
+    const roomTypeId = await discoverRoomTypeId(page);
+    test.skip(!roomTypeId, "No rooms available to test room detail");
+    await openRoomDetail(page, roomTypeId as string);
 
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    await assertCoreSections(page);
-
-    const amenities = page.getByTestId("property-amenities");
-    if ((await amenities.count()) > 0) {
-      await expect(amenities).toBeVisible();
-    }
+    await assertRoomSections(page);
 
     await maybeReachBookingEntry(page);
   });
 });
 
-test.describe("Property Detail — English (LTR)", () => {
+test.describe("Room Detail — English (LTR)", () => {
   test.use({ locale: "en-US" });
 
-  test("guest sees gallery, map, reviews, rooms and can reach booking", async ({ page }) => {
+  test("guest sees room details and can reach booking", async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("locale", "en");
     });
 
-    const hotelId = await discoverHotelId(page);
-    test.skip(!hotelId, "No hotels available to test property detail");
-    await openPropertyDetail(page, hotelId as string);
+    const roomTypeId = await discoverRoomTypeId(page);
+    test.skip(!roomTypeId, "No rooms available to test room detail");
+    await openRoomDetail(page, roomTypeId as string);
 
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
-    await assertCoreSections(page);
-
-    const amenities = page.getByTestId("property-amenities");
-    if ((await amenities.count()) > 0) {
-      await expect(amenities).toBeVisible();
-    }
+    await assertRoomSections(page);
 
     await maybeReachBookingEntry(page);
   });
