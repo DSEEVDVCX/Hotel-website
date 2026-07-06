@@ -9,6 +9,8 @@ import {
 export type RoomTypeSummary = {
   id: string;
   hotelId: string;
+  kind?: "room" | "hotel";
+  href?: string;
   nameAr: string;
   nameEn: string;
   descriptionAr: string | null;
@@ -22,6 +24,7 @@ export type RoomTypeSummary = {
   hotelNameAr: string;
   hotelNameEn: string;
   city: string;
+  availableRoomsCount?: number;
 };
 
 export type RoomTypeDetail = RoomTypeSummary & {
@@ -130,6 +133,61 @@ export async function getAllRoomTypes(): Promise<RoomTypeSummary[]> {
   } catch (error) {
     if (isDatabaseConnectionError(error)) {
       console.warn("[catalog] database unavailable, rendering empty room catalog");
+      return [];
+    }
+    throw error;
+  }
+}
+
+export async function getPublicHotelCards(): Promise<RoomTypeSummary[]> {
+  try {
+    const hotels = await prisma.hotel.findMany({
+      where: { status: "ACTIVE" },
+      include: {
+        roomTypes: {
+          include: {
+            rooms: {
+              where: { status: "AVAILABLE" },
+              select: { id: true },
+            },
+          },
+          orderBy: { basePrice: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return hotels.map((hotel) => {
+      const cheapestRoomType = hotel.roomTypes[0];
+      const availableRoomsCount = hotel.roomTypes.reduce(
+        (sum, roomType) => sum + roomType.rooms.length,
+        0
+      );
+
+      return {
+        id: hotel.id,
+        hotelId: hotel.id,
+        kind: "hotel" as const,
+        href: `/hotels/${hotel.id}`,
+        nameAr: hotel.nameAr,
+        nameEn: hotel.nameEn,
+        descriptionAr: hotel.descriptionAr,
+        descriptionEn: hotel.descriptionEn,
+        capacity: cheapestRoomType?.capacity ?? 0,
+        bedType: cheapestRoomType?.bedType ?? "",
+        basePrice: cheapestRoomType ? toNumber(cheapestRoomType.basePrice) : 0,
+        amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
+        photos: hotel.photos.length > 0 ? hotel.photos : cheapestRoomType?.photos ?? [],
+        starRating: hotel.starRating,
+        hotelNameAr: hotel.nameAr,
+        hotelNameEn: hotel.nameEn,
+        city: hotel.city,
+        availableRoomsCount,
+      };
+    });
+  } catch (error) {
+    if (isDatabaseConnectionError(error)) {
+      console.warn("[catalog] database unavailable, rendering empty hotel catalog");
       return [];
     }
     throw error;
