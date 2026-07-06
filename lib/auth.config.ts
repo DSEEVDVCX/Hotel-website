@@ -16,6 +16,10 @@ import type { UserRole } from "@prisma/client";
  */
 export const authConfig = {
   trustHost: true,
+  secret:
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    "sewar-al-andalus-auth-secret-change-in-vercel-production",
   session: {
     strategy: "jwt",
   },
