@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/providers";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 
+type DestinationOption = {
+  id: string;
+  city: string;
+  nameAr: string;
+  nameEn: string;
+  value: string;
+};
+
 export function SearchBar() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -20,9 +28,17 @@ export function SearchBar() {
   const [checkOut, setCheckOut] = useState(tomorrow);
   const [guests, setGuests] = useState("2");
   const [mounted, setMounted] = useState(false);
+  const [destinations, setDestinations] = useState<DestinationOption[]>([]);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/destinations")
+      .then((res) => (res.ok ? res.json() : { destinations: [] }))
+      .then((data) => setDestinations(data.destinations ?? []))
+      .catch(() => setDestinations([]));
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -37,7 +53,14 @@ export function SearchBar() {
     <form action="/search" method="get" onSubmit={handleSearch} noValidate className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end" aria-label={t.search.title}>
       <div>
         <label htmlFor="search-city" className="field-label">{t.search.destination}</label>
-        <input id="search-city" name="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder={t.search.destination} required disabled={!mounted} className="field" autoComplete="off" />
+        <input id="search-city" name="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder={t.search.destination} required disabled={!mounted} className="field" autoComplete="off" list="search-destinations" />
+        <datalist id="search-destinations">
+          {destinations.map((destination) => (
+            <option key={destination.id} value={destination.value}>
+              {destination.nameAr} - {destination.nameEn} - {destination.city}
+            </option>
+          ))}
+        </datalist>
       </div>
       <div>
         <label htmlFor="search-checkin" className="field-label">{t.search.checkIn}</label>

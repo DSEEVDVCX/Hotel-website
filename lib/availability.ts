@@ -30,7 +30,11 @@ export async function searchAvailableRooms(params: {
 
   const hotels = await prisma.hotel.findMany({
     where: {
-      city: { contains: city },
+      OR: [
+        { city: { contains: city } },
+        { nameAr: { contains: city } },
+        { nameEn: { contains: city, mode: "insensitive" } },
+      ],
       status: "ACTIVE",
     },
     include: {
