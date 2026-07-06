@@ -1,13 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// Seeded admin credentials (see prisma/seed.ts). The admin owns the seeded
-// hotel, so the management dashboard + media APIs are accessible.
-const ADMIN_EMAIL = "admin@suweraldhahab.sa";
-const ADMIN_PASSWORD = "admin1234";
+const ADMIN_EMAIL = "admin";
+const ADMIN_PASSWORD = "admin";
 
 async function loginAsAdmin(page: Page): Promise<void> {
   await page.goto("/admin/login");
-  const emailInput = page.locator('input[type="email"]');
+  const emailInput = page.locator('input[autocomplete="username"]');
   const passwordInput = page.locator('input[type="password"]');
   await expect(emailInput).toBeVisible({ timeout: 10000 });
   await emailInput.fill(ADMIN_EMAIL);

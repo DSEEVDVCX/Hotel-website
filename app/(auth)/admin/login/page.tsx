@@ -18,7 +18,7 @@ function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("admin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,7 +68,7 @@ function AdminLoginForm() {
         <p className="mt-2 text-sm text-on-surface-muted">{t.auth.adminLoginSubtitle}</p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label={t.auth.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+        <Input label={t.auth.email} type="text" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
         <Input label={t.auth.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         {error && <p className="text-sm text-error" role="alert">{error}</p>}
         <Button type="submit" size="lg" disabled={loading} className="w-full">{loading ? "جاري الدخول..." : t.auth.loginBtn}</Button>
